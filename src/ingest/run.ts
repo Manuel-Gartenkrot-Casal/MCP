@@ -6,6 +6,7 @@ import {
 
 // Vectorize Free holds ~4,880 vectors at 1024 dims; leave headroom.
 export const MAX_VECTORS = 4500;
+const MAX_ID_BYTES = 64;
 
 export interface IngestDeps {
   fetchEntries(): Promise<Entry[]>;
@@ -33,7 +34,11 @@ export async function runIngest(
 ): Promise<{ nuevas: number; omitidas: number; fallidas: number; fuera_de_cupo: number }> {
   const all = await deps.fetchEntries(); // throws => nothing written
   const max = deps.maxVectors ?? MAX_VECTORS;
-  const ranked = rankEntries(all);
+  // Vectorize ids are capped at 64 bytes (https://developers.cloudflare.com/vectorize/platform/limits/).
+  const enc = new TextEncoder();
+  const valid = all.filter((e) => enc.encode(e.id).length <= MAX_ID_BYTES);
+  if (valid.length < all.length) deps.log(`excluidas ${all.length - valid.length} entradas con id de más de ${MAX_ID_BYTES} bytes`);
+  const ranked = rankEntries(valid);
   const kept = ranked.slice(0, max);
   const fuera_de_cupo = ranked.length - kept.length;
   const existing = await deps.store.getActualizados(kept.map((e) => e.id));

@@ -76,6 +76,17 @@ describe("runIngest", () => {
     expect(r.fallidas).toBe(1);
     expect(f.rows.size).toBe(0);
   });
+  it("excluye ids de más de 64 bytes UTF-8 (cuenta bytes, no caracteres) y lo registra", async () => {
+    const logs: string[] = [];
+    const ok64 = "a".repeat(64);
+    const multi = "ñ".repeat(33); // 33 chars, 66 bytes
+    const f = fake([mk(ok64), mk("a".repeat(65)), mk(multi)], { log: (m) => logs.push(m) });
+    const r = await runIngest(f.deps);
+    expect(r.nuevas).toBe(1);
+    expect(r.fallidas).toBe(0);
+    expect([...f.rows.keys()]).toEqual([ok64]);
+    expect(logs.some((l) => /2 .*64 bytes/.test(l))).toBe(true);
+  });
   it("maxVectors=2 con 5 entradas: solo las 2 mejores", async () => {
     const es = [
       mk("loc", { tipo_conexion: "local", url_info: "u", descripcion: "x".repeat(50) }),
