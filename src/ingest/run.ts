@@ -1,7 +1,7 @@
 import type { Entry } from "../types";
 import { fetchRegistry } from "./registry";
 import {
-  needsEmbedding, d1RestStore, embedWorkersAI, vectorizeUpsert, type CatalogStore,
+  needsEmbedding, d1RestStore, embedWorkersAI, vectorizeUpsert, vectorizeDelete, type CatalogStore,
 } from "./cloudflare";
 
 // Vectorize Free holds ~4,880 vectors at 1024 dims; leave headroom.
@@ -16,6 +16,7 @@ export interface IngestDeps {
   store: CatalogStore;
   embedBatch(texts: string[]): Promise<number[][]>;
   upsertVectors(items: { id: string; values: number[] }[]): Promise<void>;
+  deleteVectors(ids: string[]): Promise<void>;
   log(msg: string): void;
   maxVectors?: number;
 }
@@ -34,7 +35,7 @@ export function rankEntries(entries: Entry[]): Entry[] {
 
 export async function runIngest(
   deps: IngestDeps,
-): Promise<{ nuevas: number; omitidas: number; fallidas: number; fuera_de_cupo: number }> {
+): Promise<{ nuevas: number; omitidas: number; fallidas: number; fuera_de_cupo: number; podadas: number }> {
   const all = await deps.fetchEntries(); // throws => nothing written
   const max = deps.maxVectors ?? MAX_VECTORS;
   // Vectorize ids are capped at 64 bytes (https://developers.cloudflare.com/vectorize/platform/limits/).
@@ -44,6 +45,24 @@ export async function runIngest(
   const ranked = rankEntries(valid);
   const kept = ranked.slice(0, max);
   const fuera_de_cupo = ranked.length - kept.length;
+
+  // Prune what dropped out of the cap (stored - kept) before upserting, so Vectorize never holds
+  // more than `max`. Vectors first, then rows: a failure throws and leaves rows to retry next run.
+  // Guard: a tiny/empty registry response (garbled fetch) must not wipe the index.
+  const stored = await deps.store.listIds();
+  let podadas = 0;
+  if (all.length === 0 || all.length < stored.length * 0.5) {
+    deps.log(`aviso: registro con ${all.length} entradas frente a ${stored.length} almacenadas; se omite la poda`);
+  } else {
+    const keptIds = new Set(kept.map((e) => e.id));
+    const stale = stored.filter((id) => !keptIds.has(id));
+    if (stale.length) {
+      await deps.deleteVectors(stale);
+      await deps.store.deleteIds(stale);
+      podadas = stale.length;
+    }
+  }
+
   const existing = await deps.store.getActualizados(kept.map((e) => e.id));
   const todo = kept.filter((e) => needsEmbedding(existing.get(e.id), e));
   const omitidas = kept.length - todo.length;
@@ -60,9 +79,12 @@ export async function runIngest(
       deps.log(`fallo lote de ${batch.length} (desde ${batch[0].id}): ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  deps.log(`ingesta: nuevas=${nuevas} omitidas=${omitidas} fallidas=${fallidas} fuera_de_cupo=${fuera_de_cupo}`);
-  return { nuevas, omitidas, fallidas, fuera_de_cupo };
+  deps.log(`ingesta: nuevas=${nuevas} omitidas=${omitidas} fallidas=${fallidas} fuera_de_cupo=${fuera_de_cupo} podadas=${podadas}`);
+  return { nuevas, omitidas, fallidas, fuera_de_cupo, podadas };
 }
+
+// Scheduled runs must show up as failed when any entry could not be stored.
+export const exitCodeFor = (r: { fallidas: number }): number => (r.fallidas > 0 ? 1 : 0);
 
 function env(name: string): string {
   const v = process.env[name];
@@ -75,13 +97,15 @@ export async function main(): Promise<void> {
   const token = env("CF_API_TOKEN");
   const databaseId = env("CF_D1_DATABASE_ID");
   const index = env("CF_VECTORIZE_INDEX");
-  await runIngest({
+  const r = await runIngest({
     fetchEntries: () => fetchRegistry(),
     store: d1RestStore({ accountId, databaseId, token }),
     embedBatch: embedWorkersAI({ accountId, token }),
     upsertVectors: vectorizeUpsert({ accountId, index, token }),
+    deleteVectors: vectorizeDelete({ accountId, index, token }),
     log: (m) => console.log(m),
   });
+  process.exitCode = exitCodeFor(r); // counts already logged by runIngest
 }
 
 import { pathToFileURL } from "node:url";

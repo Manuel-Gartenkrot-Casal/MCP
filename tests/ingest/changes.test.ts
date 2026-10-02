@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { needsEmbedding, d1RestStore } from "../../src/ingest/cloudflare";
+import { needsEmbedding, d1RestStore, vectorizeDelete } from "../../src/ingest/cloudflare";
 import type { Entry } from "../../src/types";
 
 const entry = (o: Partial<Entry> = {}): Entry => ({
@@ -95,6 +95,25 @@ describe("d1RestStore", () => {
     expect(m.get("a")).toBe("t");
   });
 
+  it("listIds lee todos los ids", async () => {
+    const f = fake(() => ok([{ id: "a" }, { id: "b" }]));
+    expect(await d1RestStore(cfg, f.fetchFn, noSleep).listIds()).toEqual(["a", "b"]);
+    expect(f.calls[0].body.sql).toBe("SELECT id FROM entradas");
+    expect(f.calls[0].body.params).toEqual([]);
+  });
+
+  it("deleteIds parametriza en lotes de 100 y [] no hace peticion", async () => {
+    const f = fake(() => ok());
+    const s = d1RestStore(cfg, f.fetchFn, noSleep);
+    await s.deleteIds([]);
+    expect(f.calls.length).toBe(0);
+    const ids = Array.from({ length: 250 }, (_, i) => `id${i}`);
+    await s.deleteIds(ids);
+    expect(f.calls.map((c) => c.body.params.length)).toEqual([100, 100, 50]);
+    expect(f.calls[0].body.sql).toMatch(/^DELETE FROM entradas WHERE id IN \(\?(,\?)*\)$/);
+    expect(f.calls.flatMap((c) => c.body.params)).toEqual(ids);
+  });
+
   it("HTTP no OK lanza sin filtrar el token", async () => {
     const f = fake(() => ({ status: 500, json: { errors: [{ message: "boom" }] } }));
     const err = await d1RestStore(cfg, f.fetchFn, noSleep).upsertEntries([entry()]).catch((e) => e);
@@ -127,5 +146,24 @@ describe("d1RestStore", () => {
   it("result[0].success:false rechaza", async () => {
     const s = d1RestStore(cfg, raw(JSON.stringify({ success: true, result: [{ success: false, results: [] }] })));
     await expect(s.upsertEntries([entry()])).rejects.toThrow(/D1/);
+  });
+});
+
+describe("vectorizeDelete", () => {
+  it("POST delete_by_ids con {ids} en lotes de 100; [] no hace peticion; error sin token", async () => {
+    const f = fake(() => ({ json: { success: true, result: { mutationId: "m" } } }));
+    const del = vectorizeDelete({ accountId: "acc", index: "idx", token: TOKEN }, f.fetchFn, noSleep);
+    await del([]);
+    expect(f.calls.length).toBe(0);
+    const ids = Array.from({ length: 150 }, (_, i) => `v${i}`);
+    await del(ids);
+    expect(f.calls.map((c) => c.body.ids.length)).toEqual([100, 50]);
+    expect(f.calls[0].url).toBe("https://api.cloudflare.com/client/v4/accounts/acc/vectorize/v2/indexes/idx/delete_by_ids");
+    expect(f.calls[0].init.headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(f.calls[0].init.headers["Content-Type"]).toBe("application/json");
+    const bad = fake(() => ({ status: 400, json: { success: false, errors: [{ message: "nope" }] } }));
+    const err: Error = await vectorizeDelete({ accountId: "a", index: "i", token: TOKEN }, bad.fetchFn, noSleep)(["x"]).catch((e) => e);
+    expect(err.message).toMatch(/400.*nope/);
+    expect(err.message).not.toContain(TOKEN);
   });
 });

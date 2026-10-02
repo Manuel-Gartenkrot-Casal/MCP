@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runIngest, rankEntries, type IngestDeps } from "../../src/ingest/run";
+import { runIngest, rankEntries, exitCodeFor, type IngestDeps } from "../../src/ingest/run";
 import { embedWorkersAI, EMBEDDING_DIMS } from "../../src/ingest/cloudflare";
 import type { Entry } from "../../src/types";
 
@@ -15,18 +15,28 @@ function fake(entries: Entry[], over: Partial<IngestDeps> = {}) {
   const embedCalls: number[] = [];
   const upsertCalls: number[] = [];
   const vectors: string[] = [];
+  const ops: string[] = [];
   const deps: IngestDeps = {
     fetchEntries: async () => entries,
     store: {
       getActualizados: async (ids) => new Map(ids.filter((i) => rows.has(i)).map((i) => [i, rows.get(i)!])),
       upsertEntries: async (es) => { for (const e of es) rows.set(e.id, e.actualizado); },
+      listIds: async () => [...rows.keys()],
+      deleteIds: async (ids) => { ops.push("rows:" + [...ids].sort().join(",")); for (const i of ids) rows.delete(i); },
     },
     embedBatch: async (ts) => { embedCalls.push(ts.length); embedded.push(...ts); return ts.map(() => [1]); },
-    upsertVectors: async (items) => { upsertCalls.push(items.length); vectors.push(...items.map((i) => i.id)); },
+    upsertVectors: async (items) => {
+      upsertCalls.push(items.length);
+      for (const { id } of items) if (!vectors.includes(id)) vectors.push(id);
+    },
+    deleteVectors: async (ids) => {
+      ops.push("vec:" + [...ids].sort().join(","));
+      for (const i of ids) vectors.splice(vectors.indexOf(i), 1);
+    },
     log: () => {},
     ...over,
   };
-  return { deps, rows, embedded, embedCalls, upsertCalls, vectors };
+  return { deps, rows, embedded, embedCalls, upsertCalls, vectors, ops };
 }
 
 describe("runIngest", () => {
@@ -34,7 +44,7 @@ describe("runIngest", () => {
   it("primera corrida: 3 embeddings y 3 upserts; texto = nombre + salto + descripcion", async () => {
     const f = fake(three);
     const r = await runIngest(f.deps);
-    expect(r).toEqual({ nuevas: 3, omitidas: 0, fallidas: 0, fuera_de_cupo: 0 });
+    expect(r).toEqual({ nuevas: 3, omitidas: 0, fallidas: 0, fuera_de_cupo: 0, podadas: 0 });
     expect(f.embedded.sort()).toEqual(["Na\nDa", "Nb\nDb", "Nc\nDc"]);
     expect(f.vectors).toHaveLength(3);
   });
@@ -135,6 +145,76 @@ describe("runIngest", () => {
     expect(r.nuevas).toBe(2);
     expect([...f.rows.keys()].sort()).toEqual(["r-best", "r-info"]);
     expect(f.vectors.sort()).toEqual(["r-best", "r-info"]);
+  });
+});
+
+describe("poda de entradas que salen del cupo", () => {
+  const five = ["a", "b", "c", "d", "e"].map((id) => mk(id));
+  // two newer entries push the two lowest-ranked ("d", "e") out of a cap of 5
+  const seven = [...five, mk("n1", { actualizado: "2026-05-01" }), mk("n2", { actualizado: "2026-05-01" })];
+
+  it("borra exactamente almacenadas - conservadas: primero Vectorize, luego D1", async () => {
+    const f = fake(five, { maxVectors: 5 });
+    await runIngest(f.deps);
+    f.deps.fetchEntries = async () => seven;
+    const r = await runIngest(f.deps);
+    expect(r.podadas).toBe(2);
+    expect(f.ops).toEqual(["vec:d,e", "rows:d,e"]);
+    expect([...f.rows.keys()].sort()).toEqual(["a", "b", "c", "n1", "n2"]);
+    expect([...f.vectors].sort()).toEqual(["a", "b", "c", "n1", "n2"]);
+    expect(f.rows.size).toBeLessThanOrEqual(5);
+  });
+  it("fallo al borrar vectores => lanza y deja las filas de D1 para reintentar", async () => {
+    const f = fake(five, { maxVectors: 5 });
+    await runIngest(f.deps);
+    f.deps.fetchEntries = async () => seven;
+    f.deps.deleteVectors = async () => { throw new Error("vectorize down"); };
+    await expect(runIngest(f.deps)).rejects.toThrow("vectorize down");
+    expect(f.rows.has("d")).toBe(true);
+    expect(f.rows.has("e")).toBe(true);
+    expect(f.ops).toEqual([]);
+  });
+  it("registro vacio o diminuto (< 50% de lo almacenado) => no poda y avisa", async () => {
+    const ten = Array.from({ length: 10 }, (_, i) => mk("s" + i));
+    for (const fetched of [[], ten.slice(0, 4)]) {
+      const logs: string[] = [];
+      const f = fake(ten, { log: (m) => logs.push(m) });
+      await runIngest(f.deps);
+      f.deps.fetchEntries = async () => fetched;
+      const r = await runIngest(f.deps);
+      expect(r.podadas).toBe(0);
+      expect(f.ops).toEqual([]);
+      expect(f.rows.size).toBe(10);
+      expect(logs.some((l) => /aviso.*poda/i.test(l))).toBe(true);
+    }
+  });
+  it("registro con exactamente 50% de lo almacenado => poda", async () => {
+    const ten = Array.from({ length: 10 }, (_, i) => mk("s" + i));
+    const f = fake(ten);
+    await runIngest(f.deps);
+    f.deps.fetchEntries = async () => ten.slice(0, 5);
+    const r = await runIngest(f.deps);
+    expect(r.podadas).toBe(5);
+    expect(f.rows.size).toBe(5);
+  });
+  it("corrida repetida es idempotente", async () => {
+    const f = fake(five, { maxVectors: 5 });
+    await runIngest(f.deps);
+    f.deps.fetchEntries = async () => seven;
+    await runIngest(f.deps);
+    f.ops.length = 0;
+    f.embedded.length = 0;
+    const r = await runIngest(f.deps);
+    expect(r).toEqual({ nuevas: 0, omitidas: 5, fallidas: 0, fuera_de_cupo: 2, podadas: 0 });
+    expect(f.ops).toEqual([]);
+    expect(f.embedded).toEqual([]);
+  });
+});
+
+describe("exitCodeFor", () => {
+  it("1 si hubo fallidas, 0 si no", () => {
+    expect(exitCodeFor({ fallidas: 0 })).toBe(0);
+    expect(exitCodeFor({ fallidas: 3 })).toBe(1);
   });
 });
 

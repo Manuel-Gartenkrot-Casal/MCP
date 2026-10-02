@@ -7,6 +7,8 @@ export function needsEmbedding(existingActualizado: string | undefined, entry: E
 export interface CatalogStore {
   getActualizados(ids: string[]): Promise<Map<string, string>>;
   upsertEntries(entries: Entry[]): Promise<void>;
+  listIds(): Promise<string[]>;
+  deleteIds(ids: string[]): Promise<void>;
 }
 
 type Sleep = (ms: number) => Promise<void>;
@@ -78,6 +80,15 @@ ON CONFLICT(id) DO UPDATE SET nombre = excluded.nombre, descripcion = excluded.d
         );
       }
     },
+    async listIds() {
+      return (await query("SELECT id FROM entradas", [])).map((r) => r.id);
+    },
+    async deleteIds(ids) {
+      for (let i = 0; i < ids.length; i += MAX_PARAMS) {
+        const chunk = ids.slice(i, i + MAX_PARAMS);
+        await query(`DELETE FROM entradas WHERE id IN (${chunk.map(() => "?").join(",")})`, chunk);
+      }
+    },
   };
 }
 
@@ -140,5 +151,27 @@ export function vectorizeUpsert(
       body: items.map(({ id, values }) => JSON.stringify({ id, values }) + "\n").join(""),
     }, sleep);
     await cfCall(res, "Vectorize upsert");
+  };
+}
+
+// POST /accounts/{id}/vectorize/v2/indexes/{name}/delete_by_ids, JSON body {"ids": [...]}
+// (https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/methods/delete_by_ids/).
+// No per-request id limit is documented; 100 per request is a conservative choice.
+const DELETE_BATCH = 100;
+
+export function vectorizeDelete(
+  cfg: { accountId: string; index: string; token: string },
+  fetchFn: typeof fetch = fetch,
+  sleep: Sleep = wait,
+): (ids: string[]) => Promise<void> {
+  return async (ids) => {
+    for (let i = 0; i < ids.length; i += DELETE_BATCH) {
+      const res = await fetchRetry(fetchFn, `${API}/${cfg.accountId}/vectorize/v2/indexes/${encodeURIComponent(cfg.index)}/delete_by_ids`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: ids.slice(i, i + DELETE_BATCH) }),
+      }, sleep);
+      await cfCall(res, "Vectorize delete");
+    }
   };
 }
