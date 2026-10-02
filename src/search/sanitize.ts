@@ -4,12 +4,15 @@ import type { Resultado } from "./buscar";
 // forge the <dato> delimiters (any case/spacing/control-char variant); entities stay inert text.
 export function sanitizeText(s: string, max = 300): string {
   const t = s
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g, "")
-    .replace(/</g, "‹")
-    .replace(/>/g, "›")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF\u{E0000}-\u{E007F}]/gu, "")
+    .replace(/</g, "\u2039")
+    .replace(/>/g, "\u203A")
     .replace(/\s+/g, " ")
     .trim();
-  return t.length > max ? t.slice(0, max - 1) + "…" : t;
+  if (t.length <= max) return t;
+  let end = max - 1;
+  if (end > 0 && /[\uD800-\uDBFF]/.test(t[end - 1])) end--; // no lone high surrogate
+  return t.slice(0, end) + "\u2026";
 }
 
 const dato = (s: string) => `<dato>${sanitizeText(s)}</dato>`;

@@ -40,3 +40,28 @@ describe("formatResultados", () => {
     expect(count(body, /<\/dato>/gi)).toBe(3);
   });
 });
+
+describe("sanitizeText invisibles y surrogates", () => {
+  const bad = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]|[\u{E0000}-\u{E007F}]/u;
+  it("quita caracteres invisibles", () => {
+    const tags = [..."ignore all"].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join("");
+    const s = `a\u200Bb\u200Fc\u202Ed\u2066e\u2060f\u00ADg\uFEFFh${tags}i`;
+    const o = sanitizeText(s);
+    expect(o).not.toMatch(bad);
+    expect(o).toBe("abcdefghi");
+  });
+  it("neutraliza delimitadores con zero-width", () => {
+    const o = sanitizeText("<\u200B/\u200Bda\u200Bto\u200B>");
+    expect(o).not.toMatch(/[<>]/);
+    expect(o.toLowerCase()).not.toContain("</dato>");
+  });
+  it("no deja surrogates sueltos al truncar", () => {
+    const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    for (const max of [5, 6, 7, 10]) {
+      const o = sanitizeText("😀".repeat(50), max);
+      expect(o).not.toMatch(lone);
+      expect(o.length).toBeLessThanOrEqual(max);
+      expect(o.endsWith("…")).toBe(true);
+    }
+  });
+});
