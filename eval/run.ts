@@ -52,7 +52,8 @@ export async function main(): Promise<void> {
   const accountId = env("CF_ACCOUNT_ID"), token = env("CF_API_TOKEN");
   const databaseId = env("CF_D1_DATABASE_ID"), index = env("CF_VECTORIZE_INDEX");
   const query = vectorizeQuery({ accountId, index, token });
-  const embed = embedWorkersAI({ accountId, token });
+  const embedBatch = embedWorkersAI({ accountId, token });
+  const embed = async (t: string) => (await embedBatch([t]))[0];
   const getEntries = d1GetEntries({ accountId, databaseId, token });
   const cases: Case[] = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "casos.json"), "utf8"));
   const results: Hit[][] = [];

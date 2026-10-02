@@ -7,12 +7,15 @@ import {
 // Vectorize Free holds ~4,880 vectors at 1024 dims; leave headroom.
 export const MAX_VECTORS = 4500;
 const MAX_ID_BYTES = 64;
+// Entries per batch: one Workers AI call, one Vectorize upsert, ceil(50/11) D1 inserts.
+// ~4,500 entries => ~630 REST calls on a first run, under Cloudflare's 1,200 / 5 min.
+const BATCH = 50;
 
 export interface IngestDeps {
   fetchEntries(): Promise<Entry[]>;
   store: CatalogStore;
-  embed(text: string): Promise<number[]>;
-  upsertVector(id: string, vec: number[]): Promise<void>;
+  embedBatch(texts: string[]): Promise<number[][]>;
+  upsertVectors(items: { id: string; values: number[] }[]): Promise<void>;
   log(msg: string): void;
   maxVectors?: number;
 }
@@ -42,17 +45,19 @@ export async function runIngest(
   const kept = ranked.slice(0, max);
   const fuera_de_cupo = ranked.length - kept.length;
   const existing = await deps.store.getActualizados(kept.map((e) => e.id));
-  let nuevas = 0, omitidas = 0, fallidas = 0;
-  for (const e of kept) {
-    if (!needsEmbedding(existing.get(e.id), e)) { omitidas++; continue; }
+  const todo = kept.filter((e) => needsEmbedding(existing.get(e.id), e));
+  const omitidas = kept.length - todo.length;
+  let nuevas = 0, fallidas = 0;
+  for (let i = 0; i < todo.length; i += BATCH) {
+    const batch = todo.slice(i, i + BATCH);
     try {
-      const vec = await deps.embed(`${e.nombre}\n${e.descripcion}`);
-      await deps.upsertVector(e.id, vec);
-      await deps.store.upsertEntry(e);
-      nuevas++;
+      const vecs = await deps.embedBatch(batch.map((e) => `${e.nombre}\n${e.descripcion}`));
+      await deps.upsertVectors(batch.map((e, j) => ({ id: e.id, values: vecs[j] })));
+      await deps.store.upsertEntries(batch); // rows only after their vectors are stored
+      nuevas += batch.length;
     } catch (err) {
-      fallidas++;
-      deps.log(`fallo ${e.id}: ${err instanceof Error ? err.message : String(err)}`);
+      fallidas += batch.length; // whole batch retried next run
+      deps.log(`fallo lote de ${batch.length} (desde ${batch[0].id}): ${err instanceof Error ? err.message : String(err)}`);
     }
   }
   deps.log(`ingesta: nuevas=${nuevas} omitidas=${omitidas} fallidas=${fallidas} fuera_de_cupo=${fuera_de_cupo}`);
@@ -73,8 +78,8 @@ export async function main(): Promise<void> {
   await runIngest({
     fetchEntries: () => fetchRegistry(),
     store: d1RestStore({ accountId, databaseId, token }),
-    embed: embedWorkersAI({ accountId, token }),
-    upsertVector: vectorizeUpsert({ accountId, index, token }),
+    embedBatch: embedWorkersAI({ accountId, token }),
+    upsertVectors: vectorizeUpsert({ accountId, index, token }),
     log: (m) => console.log(m),
   });
 }

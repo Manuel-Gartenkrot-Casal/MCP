@@ -1,28 +1,32 @@
 import { describe, it, expect } from "vitest";
 import { runIngest, rankEntries, type IngestDeps } from "../../src/ingest/run";
+import { embedWorkersAI, EMBEDDING_DIMS } from "../../src/ingest/cloudflare";
 import type { Entry } from "../../src/types";
 
 const mk = (id: string, o: Partial<Entry> = {}): Entry => ({
   id, nombre: "N" + id, descripcion: "D" + id, url_info: null, tipo_conexion: "remoto",
   como_conectar: "https://x", auth: "ninguna", incompleta: false, actualizado: "2026-01-01", ...o,
 });
+const many = (n: number) => Array.from({ length: n }, (_, i) => mk("e" + String(i).padStart(3, "0")));
 
 function fake(entries: Entry[], over: Partial<IngestDeps> = {}) {
   const rows = new Map<string, string>();
   const embedded: string[] = [];
+  const embedCalls: number[] = [];
+  const upsertCalls: number[] = [];
   const vectors: string[] = [];
   const deps: IngestDeps = {
     fetchEntries: async () => entries,
     store: {
       getActualizados: async (ids) => new Map(ids.filter((i) => rows.has(i)).map((i) => [i, rows.get(i)!])),
-      upsertEntry: async (e) => { rows.set(e.id, e.actualizado); },
+      upsertEntries: async (es) => { for (const e of es) rows.set(e.id, e.actualizado); },
     },
-    embed: async (t) => { embedded.push(t); return [1]; },
-    upsertVector: async (id) => { vectors.push(id); },
+    embedBatch: async (ts) => { embedCalls.push(ts.length); embedded.push(...ts); return ts.map(() => [1]); },
+    upsertVectors: async (items) => { upsertCalls.push(items.length); vectors.push(...items.map((i) => i.id)); },
     log: () => {},
     ...over,
   };
-  return { deps, rows, embedded, vectors };
+  return { deps, rows, embedded, embedCalls, upsertCalls, vectors };
 }
 
 describe("runIngest", () => {
@@ -57,24 +61,54 @@ describe("runIngest", () => {
     expect(f.rows.size).toBe(0);
     expect(f.vectors).toHaveLength(0);
   });
-  it("embed falla en la 2a => fallida, resto sigue, rerun reintenta", async () => {
-    let fail = true;
-    const f = fake(three);
-    const ok = f.deps.embed;
-    f.deps.embed = async (t) => { if (fail && t.startsWith("Nb")) throw new Error("x"); return ok(t); };
+  it("lotes de 50: 120 entradas => embed y upsert en 50, 50, 20", async () => {
+    const f = fake(many(120));
     const r = await runIngest(f.deps);
-    expect(r).toMatchObject({ nuevas: 2, fallidas: 1 });
-    expect([...f.rows.keys()].sort()).toEqual(["a", "c"]);
+    expect(r.nuevas).toBe(120);
+    expect(f.embedCalls).toEqual([50, 50, 20]);
+    expect(f.upsertCalls).toEqual([50, 50, 20]);
+  });
+  it("lote que falla => sus 50 son fallidas, los demás lotes siguen, rerun reintenta", async () => {
+    let fail = true;
+    const f = fake(many(120));
+    const ok = f.deps.embedBatch;
+    f.deps.embedBatch = async (ts) => { if (fail && ts.includes("Ne075\nDe075")) throw new Error("x"); return ok(ts); };
+    const r = await runIngest(f.deps);
+    expect(r).toMatchObject({ nuevas: 70, fallidas: 50 });
+    expect(f.rows.has("e075")).toBe(false);
+    expect(f.rows.has("e050")).toBe(false);
+    expect(f.rows.has("e100")).toBe(true);
     fail = false;
     const r2 = await runIngest(f.deps);
-    expect(r2).toMatchObject({ nuevas: 1, omitidas: 2, fallidas: 0 });
-    expect(f.rows.has("b")).toBe(true);
+    expect(r2).toMatchObject({ nuevas: 50, omitidas: 70, fallidas: 0 });
+    expect(f.rows.size).toBe(120);
   });
-  it("upsertVector falla => no se guarda la fila", async () => {
-    const f = fake([mk("a")], { upsertVector: async () => { throw new Error("v"); } });
+  it("upsertVectors falla => no se guardan las filas", async () => {
+    const f = fake([mk("a")], { upsertVectors: async () => { throw new Error("v"); } });
     const r = await runIngest(f.deps);
     expect(r.fallidas).toBe(1);
     expect(f.rows.size).toBe(0);
+  });
+  it("upsertEntries falla en un lote => ese lote fallido, el siguiente sigue", async () => {
+    const f = fake(many(60));
+    const up = f.deps.store.upsertEntries;
+    f.deps.store.upsertEntries = async (es) => { if (es.length === 50) throw new Error("d1"); return up(es); };
+    const r = await runIngest(f.deps);
+    expect(r).toMatchObject({ nuevas: 10, fallidas: 50 });
+  });
+  it("reintentos agotados (429 siempre) => el lote cuenta como fallidas sin filtrar el token", async () => {
+    const logs: string[] = [];
+    const always429 = (async () => new Response("{}", { status: 429 })) as unknown as typeof fetch;
+    const f = fake(three, {
+      embedBatch: embedWorkersAI({ accountId: "a", token: "SECRET-TOKEN-123" }, always429, async () => {}),
+      log: (m) => logs.push(m),
+    });
+    const r = await runIngest(f.deps);
+    expect(r).toMatchObject({ nuevas: 0, fallidas: 3 });
+    expect(f.rows.size).toBe(0);
+    expect(logs.join("\n")).toContain("429");
+    expect(logs.join("\n")).not.toContain("SECRET-TOKEN-123");
+    expect(EMBEDDING_DIMS).toBe(1024);
   });
   it("excluye ids de más de 64 bytes UTF-8 (cuenta bytes, no caracteres) y lo registra", async () => {
     const logs: string[] = [];

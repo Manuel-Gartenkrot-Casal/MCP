@@ -6,25 +6,44 @@ export function needsEmbedding(existingActualizado: string | undefined, entry: E
 
 export interface CatalogStore {
   getActualizados(ids: string[]): Promise<Map<string, string>>;
-  upsertEntry(entry: Entry): Promise<void>;
+  upsertEntries(entries: Entry[]): Promise<void>;
+}
+
+type Sleep = (ms: number) => Promise<void>;
+const wait: Sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const RETRIES = 3;
+
+// Retries 429 and 5xx up to RETRIES times: Retry-After (seconds) when present, else 1s, 2s, 4s.
+// Cloudflare API limit: 1,200 requests / 5 min per user; a 429 carries retry-after
+// (https://developers.cloudflare.com/fundamentals/api/reference/limits/).
+async function fetchRetry(fetchFn: typeof fetch, url: string, init: RequestInit, sleep: Sleep): Promise<Response> {
+  for (let i = 0; ; i++) {
+    const res = await fetchFn(url, init);
+    if (i >= RETRIES || (res.status !== 429 && res.status < 500)) return res;
+    await res.body?.cancel().catch(() => {});
+    const ra = Number(res.headers.get("retry-after"));
+    await sleep(ra > 0 ? ra * 1000 : 1000 * 2 ** i);
+  }
 }
 
 // D1 limit: "Maximum bound parameters per query: 100"
 // (https://developers.cloudflare.com/d1/platform/limits/)
 const MAX_PARAMS = 100;
+const ROWS_PER_INSERT = Math.floor(MAX_PARAMS / 9); // 9 columns => 11 rows, 99 params
 
 export function d1RestStore(
   cfg: { accountId: string; databaseId: string; token: string },
   fetchFn: typeof fetch = fetch,
+  sleep: Sleep = wait,
 ): CatalogStore {
   const url = `https://api.cloudflare.com/client/v4/accounts/${cfg.accountId}/d1/database/${cfg.databaseId}/query`;
 
   async function query(sql: string, params: unknown[]): Promise<any[]> {
-    const res = await fetchFn(url, {
+    const res = await fetchRetry(fetchFn, url, {
       method: "POST",
       headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ sql, params }),
-    });
+    }, sleep);
     const body: any = await res.json().catch(() => ({}));
     if (!res.ok || body.success !== true || body.result?.[0]?.success === false) {
       const msg = (body.errors ?? []).map((e: any) => e.message).join("; ");
@@ -46,15 +65,18 @@ export function d1RestStore(
       }
       return out;
     },
-    async upsertEntry(e) {
-      await query(
-        `INSERT INTO entradas (id, nombre, descripcion, url_info, tipo_conexion, como_conectar, auth, incompleta, actualizado)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    async upsertEntries(es) {
+      for (let i = 0; i < es.length; i += ROWS_PER_INSERT) {
+        const chunk = es.slice(i, i + ROWS_PER_INSERT);
+        await query(
+          `INSERT INTO entradas (id, nombre, descripcion, url_info, tipo_conexion, como_conectar, auth, incompleta, actualizado)
+VALUES ${chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
 ON CONFLICT(id) DO UPDATE SET nombre = excluded.nombre, descripcion = excluded.descripcion,
   url_info = excluded.url_info, tipo_conexion = excluded.tipo_conexion, como_conectar = excluded.como_conectar,
   auth = excluded.auth, incompleta = excluded.incompleta, actualizado = excluded.actualizado`,
-        [e.id, e.nombre, e.descripcion, e.url_info, e.tipo_conexion, e.como_conectar, e.auth, e.incompleta ? 1 : 0, e.actualizado],
-      );
+          chunk.flatMap((e) => [e.id, e.nombre, e.descripcion, e.url_info, e.tipo_conexion, e.como_conectar, e.auth, e.incompleta ? 1 : 0, e.actualizado]),
+        );
+      }
     },
   };
 }
@@ -78,35 +100,45 @@ async function cfCall(res: Response, what: string): Promise<any> {
   return body;
 }
 
+// One call embeds every text; result.data must be number[][] with one vector per input, else throw.
 export function embedWorkersAI(
   cfg: { accountId: string; token: string },
   fetchFn: typeof fetch = fetch,
-): (text: string) => Promise<number[]> {
-  return async (text) => {
-    const res = await fetchFn(`${API}/${cfg.accountId}/ai/run/@cf/baai/bge-m3`, {
+  sleep: Sleep = wait,
+): (texts: string[]) => Promise<number[][]> {
+  return async (texts) => {
+    const res = await fetchRetry(fetchFn, `${API}/${cfg.accountId}/ai/run/@cf/baai/bge-m3`, {
       method: "POST",
       headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ text: [text] }),
-    });
+      body: JSON.stringify({ text: texts }),
+    }, sleep);
     const body = await cfCall(res, "Workers AI embed");
-    const vec = body.result?.data?.[0];
-    if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIMS) {
-      throw new Error(`Workers AI embed: expected ${EMBEDDING_DIMS} dims, got ${Array.isArray(vec) ? vec.length : "no vector"}`);
+    const data = body.result?.data;
+    if (!Array.isArray(data) || data.length !== texts.length) {
+      throw new Error(`Workers AI embed: expected ${texts.length} vectors, got ${Array.isArray(data) ? data.length : "no vectors"}`);
     }
-    return vec;
+    for (const vec of data) {
+      if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIMS) {
+        throw new Error(`Workers AI embed: expected ${EMBEDDING_DIMS} dims, got ${Array.isArray(vec) ? vec.length : "no vector"}`);
+      }
+    }
+    return data;
   };
 }
 
+// One request, one NDJSON line per vector (HTTP API batch limit 5,000 vectors / 100 MB,
+// https://developers.cloudflare.com/vectorize/platform/limits/); runIngest sends <= 50.
 export function vectorizeUpsert(
   cfg: { accountId: string; index: string; token: string },
   fetchFn: typeof fetch = fetch,
-): (id: string, vec: number[]) => Promise<void> {
-  return async (id, vec) => {
-    const res = await fetchFn(`${API}/${cfg.accountId}/vectorize/v2/indexes/${encodeURIComponent(cfg.index)}/upsert`, {
+  sleep: Sleep = wait,
+): (items: { id: string; values: number[] }[]) => Promise<void> {
+  return async (items) => {
+    const res = await fetchRetry(fetchFn, `${API}/${cfg.accountId}/vectorize/v2/indexes/${encodeURIComponent(cfg.index)}/upsert`, {
       method: "POST",
       headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/x-ndjson" },
-      body: JSON.stringify({ id, values: vec }) + "\n",
-    });
+      body: items.map(({ id, values }) => JSON.stringify({ id, values }) + "\n").join(""),
+    }, sleep);
     await cfCall(res, "Vectorize upsert");
   };
 }

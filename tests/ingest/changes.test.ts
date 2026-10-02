@@ -15,6 +15,7 @@ describe("needsEmbedding", () => {
 
 const TOKEN = "SECRET-TOKEN-123";
 const cfg = { accountId: "acc", databaseId: "db", token: TOKEN };
+const noSleep = async () => {};
 function fake(respond: (body: any) => { status?: number; json: any }) {
   const calls: { url: string; init: any; body: any }[] = [];
   const fetchFn = (async (url: string, init: any) => {
@@ -30,14 +31,14 @@ const ok = (results: any[] = []) => ({ json: { success: true, errors: [], result
 describe("d1RestStore", () => {
   it("getActualizados([]) no hace petición", async () => {
     const f = fake(() => ok());
-    const m = await d1RestStore(cfg, f.fetchFn).getActualizados([]);
+    const m = await d1RestStore(cfg, f.fetchFn, noSleep).getActualizados([]);
     expect(m.size).toBe(0);
     expect(f.calls.length).toBe(0);
   });
 
   it("getActualizados usa URL, Authorization y parámetros", async () => {
     const f = fake(() => ok([{ id: "a/b", actualizado: "t1" }]));
-    const m = await d1RestStore(cfg, f.fetchFn).getActualizados(["a/b", "c/d"]);
+    const m = await d1RestStore(cfg, f.fetchFn, noSleep).getActualizados(["a/b", "c/d"]);
     expect(m.get("a/b")).toBe("t1");
     const c = f.calls[0];
     expect(c.url).toBe("https://api.cloudflare.com/client/v4/accounts/acc/d1/database/db/query");
@@ -51,15 +52,15 @@ describe("d1RestStore", () => {
   it("agrupa en lotes de 100 parámetros", async () => {
     const f = fake((b) => ok(b.params.map((id: string) => ({ id, actualizado: "t" }))));
     const ids = Array.from({ length: 250 }, (_, i) => `id${i}`);
-    const m = await d1RestStore(cfg, f.fetchFn).getActualizados(ids);
+    const m = await d1RestStore(cfg, f.fetchFn, noSleep).getActualizados(ids);
     expect(f.calls.map((c) => c.body.params.length)).toEqual([100, 100, 50]);
     expect(m.size).toBe(250);
   });
 
-  it("upsertEntry parametriza y evita inyección", async () => {
+  it("upsertEntries parametriza y evita inyección", async () => {
     const f = fake(() => ok());
     const evil = "x'); DROP TABLE entradas;--";
-    await d1RestStore(cfg, f.fetchFn).upsertEntry(entry({ nombre: evil, incompleta: true, url_info: "https://u" }));
+    await d1RestStore(cfg, f.fetchFn, noSleep).upsertEntries([entry({ nombre: evil, incompleta: true, url_info: "https://u" })]);
     const { sql, params } = f.calls[0].body;
     expect(sql).toMatch(/INSERT INTO entradas/);
     expect(sql).toMatch(/ON CONFLICT\(id\) DO UPDATE/);
@@ -70,9 +71,33 @@ describe("d1RestStore", () => {
     expect(params).toContain(1);
   });
 
+  it("upsertEntries: INSERT multi-fila en trozos de 11 filas (<= 100 parámetros)", async () => {
+    const f = fake(() => ok());
+    const es = Array.from({ length: 25 }, (_, i) => entry({ id: "id" + i }));
+    await d1RestStore(cfg, f.fetchFn, noSleep).upsertEntries(es);
+    expect(f.calls.map((c) => c.body.params.length)).toEqual([99, 99, 27]);
+    expect(f.calls[0].body.sql.match(/\(\?, \?, \?, \?, \?, \?, \?, \?, \?\)/g)).toHaveLength(11);
+    expect(f.calls[0].body.sql).toMatch(/ON CONFLICT\(id\) DO UPDATE/);
+    expect(f.calls.flatMap((c) => c.body.params.filter((_: unknown, i: number) => i % 9 === 0))).toEqual(es.map((e) => e.id));
+  });
+
+  it("upsertEntries([]) no hace petición", async () => {
+    const f = fake(() => ok());
+    await d1RestStore(cfg, f.fetchFn, noSleep).upsertEntries([]);
+    expect(f.calls.length).toBe(0);
+  });
+
+  it("reintenta 503 y luego responde", async () => {
+    let n = 0;
+    const f = fake(() => (n++ === 0 ? { status: 503, json: {} } : ok([{ id: "a", actualizado: "t" }])));
+    const m = await d1RestStore(cfg, f.fetchFn, noSleep).getActualizados(["a"]);
+    expect(f.calls.length).toBe(2);
+    expect(m.get("a")).toBe("t");
+  });
+
   it("HTTP no OK lanza sin filtrar el token", async () => {
     const f = fake(() => ({ status: 500, json: { errors: [{ message: "boom" }] } }));
-    const err = await d1RestStore(cfg, f.fetchFn).upsertEntry(entry()).catch((e) => e);
+    const err = await d1RestStore(cfg, f.fetchFn, noSleep).upsertEntries([entry()]).catch((e) => e);
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toContain("500");
     expect(err.message).not.toContain(TOKEN);
@@ -80,7 +105,7 @@ describe("d1RestStore", () => {
 
   it("success:false lanza con el mensaje y sin token", async () => {
     const f = fake(() => ({ json: { success: false, errors: [{ message: "syntax error" }], result: [] } }));
-    const err = await d1RestStore(cfg, f.fetchFn).getActualizados(["a"]).catch((e) => e);
+    const err = await d1RestStore(cfg, f.fetchFn, noSleep).getActualizados(["a"]).catch((e) => e);
     expect(err.message).toContain("syntax error");
     expect(err.message).not.toContain(TOKEN);
   });
@@ -90,17 +115,17 @@ describe("d1RestStore", () => {
 
   it("200 con cuerpo no JSON rechaza (upsert y get)", async () => {
     const s = d1RestStore(cfg, raw("<html>oops</html>"));
-    await expect(s.upsertEntry(entry())).rejects.toThrow(/D1/);
+    await expect(s.upsertEntries([entry()])).rejects.toThrow(/D1/);
     await expect(s.getActualizados(["a"])).rejects.toThrow(/D1/);
   });
 
   it("200 JSON sin success:true rechaza", async () => {
     const s = d1RestStore(cfg, raw("{}"));
-    await expect(s.upsertEntry(entry())).rejects.toThrow(/D1/);
+    await expect(s.upsertEntries([entry()])).rejects.toThrow(/D1/);
   });
 
   it("result[0].success:false rechaza", async () => {
     const s = d1RestStore(cfg, raw(JSON.stringify({ success: true, result: [{ success: false, results: [] }] })));
-    await expect(s.upsertEntry(entry())).rejects.toThrow(/D1/);
+    await expect(s.upsertEntries([entry()])).rejects.toThrow(/D1/);
   });
 });
