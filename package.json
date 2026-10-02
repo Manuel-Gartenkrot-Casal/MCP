@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "eval": "tsx eval/run.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

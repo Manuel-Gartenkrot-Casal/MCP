@@ -45,3 +45,11 @@ Solo investigación (docs y API pública); no se creó ningún recurso en la nub
 - Coste de embeddings: 38,5 k entradas x ~60 tokens = ~2,3 M tokens ~ 2.500 neuronas, cabe en los 10.000/día; la ingesta debe ser incremental.
 - Helper MCP: `createMcpHandler` (paquete `agents`) por defecto; si da problemas, SDK `@modelcontextprotocol/sdk` con transporte Streamable HTTP web-standard. `agents` no se instaló aún (se añade en la tarea del Worker).
 - Límite de peticiones: binding `LIMITER` (30 por 60 s por cliente, valor inicial).
+
+## Evaluación
+
+`npm run eval` (script `eval/run.ts`, casos en `eval/casos.json`: 20 reales, 8 en español y 12 en inglés, más 3 absurdos con `esperado: null`) consulta el índice real: embebe cada necesidad, consulta Vectorize (`POST /accounts/{id}/vectorize/v2/indexes/{name}/query`, https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/methods/query/) y lee D1, llamando a `buscar` con `umbral: 0`. Imprime el % de aciertos en el top 5, los fallos (rank/puntaje o "ausente") y un barrido de umbrales [0.3 .. 0.7] con el umbral recomendado.
+
+Variables de entorno necesarias: `CF_ACCOUNT_ID`, `CF_API_TOKEN`, `CF_D1_DATABASE_ID`, `CF_VECTORIZE_INDEX`.
+
+Pendiente: tras la primera ingesta real, ejecutar `npm run eval` y fijar el umbral por defecto de `buscar` (provisional 0.5) con el valor recomendado; anotar aquí el resultado.
