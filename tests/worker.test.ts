@@ -91,9 +91,49 @@ describe("worker MCP", () => {
 
   it("fallo del log no rompe la respuesta", async () => {
     const env = makeEnv({ putFails: true }); const c = ctx();
-    const r = await json(await worker.fetch(call({ necesidad: "x" }), env as any, c));
+    const res = await worker.fetch(call({ necesidad: "x" }), env as any, c);
+    expect(res.status).toBe(200);
+    const r = await json(res);
     expect(r.result.isError).toBeFalsy();
-    await expect(Promise.all(c.p)).resolves.toBeDefined();
+    expect(r.result.content[0].text).toContain("<dato>Alfa</dato>");
+    await Promise.all(c.p);
+    expect(env.LOGS.put).toHaveBeenCalledTimes(1);
+    await expect(env.LOGS.put.mock.results[0].value).rejects.toThrow();
+  });
+
+  it("limitador que falla -> fail open", async () => {
+    const env = makeEnv(); env.LIMITER.limit.mockRejectedValue(new Error("down"));
+    const res = await worker.fetch(rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" }), env as any, ctx());
+    expect(res.status).toBe(200);
+  });
+
+  it("cuerpo > 16 KB -> 413 con y sin content-length", async () => {
+    const big = JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "buscar", arguments: { necesidad: "a".repeat(20000) } } });
+    const env = makeEnv();
+    const withCl = new Request("https://w.example/mcp", { method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "content-length": String(big.length) }, body: big });
+    expect((await worker.fetch(withCl, env as any, ctx())).status).toBe(413);
+    const stream = new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(big)); c.close(); } });
+    const noCl = new Request("https://w.example/mcp", { method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream" }, body: stream, duplex: "half" } as any);
+    const res = await worker.fetch(noCl, env as any, ctx());
+    expect(res.status).toBe(413);
+    expect(await res.text()).toMatch(/grande/);
+    expect(env.AI.run).not.toHaveBeenCalled();
+  });
+
+  it("necesidad de 5000 caracteres -> resultado de error, no 500", async () => {
+    const env = makeEnv();
+    const res = await worker.fetch(call({ necesidad: "a".repeat(5000) }), env as any, ctx());
+    expect(res.status).toBe(200);
+    expect((await json(res)).result.isError).toBe(true);
+    expect(env.AI.run).not.toHaveBeenCalled();
+  });
+
+  it.each(["GET", "DELETE", "OPTIONS"])("%s -> 405 con Allow: POST", async (method) => {
+    const env = makeEnv();
+    const res = await worker.fetch(new Request("https://w.example/mcp", { method }), env as any, ctx());
+    expect(res.status).toBe(405);
+    expect(res.headers.get("Allow")).toBe("POST");
+    expect(env.AI.run).not.toHaveBeenCalled();
   });
 
   it("descripción hostil queda dentro de delimitadores", async () => {

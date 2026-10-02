@@ -42,7 +42,7 @@ function buildServer(env: Env, ctx: ExecutionContext) {
       description:
         "Busca en el catálogo de servidores MCP según una necesidad descrita en lenguaje natural (por ejemplo: 'leer hojas de cálculo'). Devuelve los servidores más relevantes y cómo conectarlos.",
       inputSchema: {
-        necesidad: z.string(),
+        necesidad: z.string().max(2000),
         tipo_conexion: z.enum(["remoto", "local"]).optional(),
         auth: z.enum(["ninguna", "clave", "oauth", "desconocida"]).optional(),
       },
@@ -63,17 +63,47 @@ function buildServer(env: Env, ctx: ExecutionContext) {
   return server;
 }
 
+const MAX_BODY = 16 * 1024;
+const err = (status: number, message: string, headers?: HeadersInit) =>
+  Response.json({ jsonrpc: "2.0", id: null, error: { code: -32000, message } }, { status, headers });
+
+// Reads at most MAX_BODY bytes (enforced while streaming, so it holds without content-length); null if exceeded.
+async function readCapped(req: Request): Promise<Uint8Array | null> {
+  const cl = Number(req.headers.get("content-length"));
+  if (cl > MAX_BODY) return null;
+  const chunks: Uint8Array[] = [];
+  let n = 0;
+  if (req.body) {
+    const reader = req.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      n += value.length;
+      if (n > MAX_BODY) { await reader.cancel(); return null; }
+      chunks.push(value);
+    }
+  }
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const c of chunks) { out.set(c, o); o += c.length; }
+  return out;
+}
+
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const { success } = await env.LIMITER.limit({ key: req.headers.get("CF-Connecting-IP") ?? "anon" });
-    if (!success)
-      return Response.json(
-        { jsonrpc: "2.0", id: null, error: { code: -32029, message: "Demasiadas peticiones, inténtalo de nuevo en un minuto." } },
-        { status: 429 },
-      );
+    let success = true;
+    try {
+      ({ success } = await env.LIMITER.limit({ key: req.headers.get("CF-Connecting-IP") ?? "anon" }));
+    } catch {
+      // fail open: a limiter outage must not take the service down
+    }
+    if (!success) return err(429, "Demasiadas peticiones, inténtalo de nuevo en un minuto.");
+    if (req.method !== "POST") return err(405, "Método no permitido; usa POST.", { Allow: "POST" });
+    const body = await readCapped(req);
+    if (!body) return err(413, "Petición demasiado grande (máximo 16 KB).");
     // Stateless: fresh server + transport per request, JSON responses (no SSE/session).
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
     await buildServer(env, ctx).connect(transport);
-    return transport.handleRequest(req);
+    return transport.handleRequest(new Request(req.url, { method: "POST", headers: req.headers, body }));
   },
 };
