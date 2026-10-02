@@ -5,7 +5,7 @@ compatibility_date = "2026-10-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "catalogo-mcp"
-database_id = "REPLACE_ME"
+database_id = "9d719b2d-8f41-4a22-870f-f68c935fdaa2"
 
 [[vectorize]]
 binding = "VECTORS"
@@ -20,7 +20,7 @@ bucket_name = "catalogo-mcp-logs"
 
 [[ratelimits]]
 name = "LIMITER"
-namespace_id = "1001"
+namespace_id = "48291"
 
   [ratelimits.simple]
   limit = 30
