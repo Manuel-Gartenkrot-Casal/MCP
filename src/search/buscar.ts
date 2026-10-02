@@ -23,7 +23,9 @@ export async function buscar(
   filtros: Filtros = {},
   opts: { n?: number; max?: number; umbral?: number } = {},
 ): Promise<{ coincidencias: Resultado[]; mensaje?: string }> {
-  const { n = 20, max = 10, umbral = 0.5 } = opts;
+  // Filters run after the vector query; with a filter, fetch Vectorize's max topK (100 without
+  // values/metadata) so filtered-out neighbours don't starve the results. 100 ids = D1's 100-param cap.
+  const { n = filtros.tipo_conexion || filtros.auth ? 100 : 20, max = 10, umbral = 0.5 } = opts;
   const q = (necesidad ?? "").trim().slice(0, 1000);
   if (!q) throw new InputError("necesidad vacía");
   if (filtros.tipo_conexion !== undefined && !CONEXIONES.includes(filtros.tipo_conexion))

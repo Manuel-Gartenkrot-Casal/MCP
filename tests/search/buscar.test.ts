@@ -31,6 +31,18 @@ describe("buscar", () => {
     const r2 = await buscar(deps(hits, es), "x", { auth: "ninguna" });
     expect(r2.coincidencias.map((c) => c.nombre).sort()).toEqual(["a", "b"]);
   });
+  it("con filtro pide 100 vecinos: un local en el puesto 60 aparece", async () => {
+    const all = Array.from({ length: 100 }, (_, i) =>
+      entry("e" + i, { tipo_conexion: i === 59 ? "local" : "remoto" }));
+    const hits = all.map((e, i) => ({ id: e.id, score: 0.95 - i * 0.004 }));
+    const d = deps([], all);
+    d.nearest.mockImplementation(async (_v: number[], n: number) => hits.slice(0, n));
+    const r = await buscar(d, "x", { tipo_conexion: "local" });
+    expect(d.nearest.mock.calls[0][1]).toBe(100);
+    expect(r.coincidencias.map((c) => c.nombre)).toEqual(["e59"]);
+    await buscar(d, "x");
+    expect(d.nearest.mock.calls[1][1]).toBe(20);
+  });
   it("bajo umbral o sin sobrevivientes", async () => {
     const r = await buscar(deps([{ id: "a", score: 0.1 }], [entry("a")]), "x");
     expect(r).toEqual({ coincidencias: [], mensaje: "sin coincidencias fiables" });
