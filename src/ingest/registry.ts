@@ -2,6 +2,7 @@ import type { Entry, Auth } from "../types";
 
 const BASE = "https://registry.modelcontextprotocol.io/v0.1/servers?version=latest&limit=100";
 
+const MAX_PAGES = 1000;
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v : undefined);
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
@@ -66,7 +67,9 @@ export function dedupeLatest(entries: Entry[]): Entry[] {
 export async function fetchRegistry(fetchFn: typeof fetch = fetch): Promise<Entry[]> {
   const out: Entry[] = [];
   let cursor: string | undefined;
+  const seen = new Set<string>();
   do {
+    if (seen.size >= MAX_PAGES) throw new Error(`Registry: more than ${MAX_PAGES} pages`);
     const res = await fetchFn(BASE + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""));
     if (!res.ok) throw new Error(`Registry HTTP ${res.status}`);
     const body: any = await res.json();
@@ -75,6 +78,10 @@ export async function fetchRegistry(fetchFn: typeof fetch = fetch): Promise<Entr
       if (e) out.push(e);
     }
     cursor = str(body.metadata?.nextCursor);
+    if (cursor) {
+      if (seen.has(cursor)) throw new Error(`Registry: repeated cursor ${cursor}`);
+      seen.add(cursor);
+    }
   } while (cursor);
   return dedupeLatest(out);
 }

@@ -86,6 +86,15 @@ describe("fetchRegistry", () => {
     expect(urls[0]).toBe("https://registry.modelcontextprotocol.io/v0.1/servers?version=latest&limit=100");
     expect(urls[1]).toContain("&cursor=" + encodeURIComponent("a/b:1.0.0"));
   });
+  it("cursor repetido => lanza", async () => {
+    const f = (async () => page([latest[0]], "same:1")) as typeof fetch;
+    await expect(fetchRegistry(f)).rejects.toThrow(/repeated cursor/);
+  });
+  it("más de 1000 páginas => lanza", async () => {
+    let n = 0;
+    const f = (async () => page([], `c${n++}`)) as typeof fetch;
+    await expect(fetchRegistry(f)).rejects.toThrow(/1000 pages/);
+  });
   it("HTTP 500 => lanza", async () => {
     const f = (async () => new Response("x", { status: 500 })) as typeof fetch;
     await expect(fetchRegistry(f)).rejects.toThrow();
