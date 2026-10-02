@@ -1,0 +1,340 @@
+{
+  "_nota": "Respuesta real recortada de GET https://registry.modelcontextprotocol.io/v0.1/servers (obtenida 2026-10-02). pagina_latest: entradas de ?version=latest. pagina_versiones: primera pagina sin version (muestra varias versiones del mismo servidor).",
+  "pagina_latest": {
+    "servers": [
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ae.propick/propick",
+          "description": "Manage your real-estate stock on Propick (Dubai): bulk listing sync, lookups and run reports.",
+          "title": "Propick Integration MCP",
+          "version": "1.0.0",
+          "websiteUrl": "https://propick.ae",
+          "remotes": [
+            {
+              "type": "streamable-http",
+              "url": "https://propick.ae/mcp",
+              "headers": [
+                {
+                  "description": "Bearer <integration key> (ppk_live_...) issued in the Propick cabinet when creating an import channel",
+                  "isRequired": true,
+                  "isSecret": true,
+                  "name": "Authorization"
+                }
+              ]
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-08-25T11:16:56.879334Z",
+            "publishedAt": "2026-08-25T11:16:56.879334Z",
+            "updatedAt": "2026-08-25T11:16:56.879334Z",
+            "isLatest": true
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ac.inference.sh/mcp",
+          "description": "run any ai model. compose agents, stack knowledge, connect tools. one api, pay per run.",
+          "title": "inference.sh",
+          "version": "2.0.1",
+          "remotes": [
+            {
+              "type": "streamable-http",
+              "url": "https://api.inference.sh/mcp"
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-07-27T10:44:51.359634Z",
+            "publishedAt": "2026-07-27T10:44:51.359634Z",
+            "updatedAt": "2026-07-27T10:44:51.359634Z",
+            "isLatest": true
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ai.adtest/adtest-mcp",
+          "description": "AI-only ad scoring for Claude: score image, video or text ads on 13 dimensions before you spend.",
+          "repository": {
+            "url": "https://github.com/menaker/adtest-mcp",
+            "source": "github"
+          },
+          "version": "1.1.0",
+          "websiteUrl": "https://adtest.ai/",
+          "packages": [
+            {
+              "registryType": "npm",
+              "identifier": "adtest-mcp",
+              "version": "1.1.0",
+              "transport": {
+                "type": "stdio"
+              },
+              "environmentVariables": [
+                {
+                  "description": "AdTest.AI developer API key (app.adtest.ai → Developer → Generate key). Each successful analysis costs 1 credit.",
+                  "isRequired": true,
+                  "format": "string",
+                  "isSecret": true,
+                  "name": "ADTEST_API_KEY"
+                },
+                {
+                  "description": "Optional API base URL override (default https://app.adtest.ai/adtest-api).",
+                  "format": "string",
+                  "name": "ADTEST_API_BASE"
+                },
+                {
+                  "description": "Optional max wait for a job in milliseconds (default 900000 = 15 min).",
+                  "format": "number",
+                  "name": "ADTEST_POLL_TIMEOUT_MS"
+                }
+              ]
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-09-01T21:42:48.138341Z",
+            "publishedAt": "2026-09-01T21:42:48.138341Z",
+            "updatedAt": "2026-09-01T21:42:48.138341Z",
+            "isLatest": true
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "agency.kesey/pretrip",
+          "description": "Screen regulated-health marketing copy against source-cited rulesets, all 50 states.",
+          "title": "Pre-Trip compliance scanner",
+          "version": "1.0.1",
+          "websiteUrl": "https://scan.kesey.agency/developers/",
+          "packages": [
+            {
+              "registryType": "npm",
+              "identifier": "pretrip-mcp",
+              "version": "1.0.1",
+              "transport": {
+                "type": "stdio"
+              }
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-07-26T18:03:21.463557Z",
+            "publishedAt": "2026-07-26T18:03:21.463557Z",
+            "updatedAt": "2026-07-26T18:03:21.463557Z",
+            "isLatest": true
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ai.agentxray/amazon-seller-mcp",
+          "description": "Amazon Seller Central and Ads in Claude or ChatGPT. Connect at agentxray.ai/connect.",
+          "title": "Amazon Seller Central & Ads MCP",
+          "version": "1.0.0",
+          "websiteUrl": "https://agentxray.ai/connect",
+          "icons": [
+            {
+              "src": "https://agentxray.ai/brand-mark-dark-512.png",
+              "mimeType": "image/png",
+              "sizes": [
+                "512x512"
+              ]
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-09-23T08:05:15.873174Z",
+            "publishedAt": "2026-09-23T08:05:15.873174Z",
+            "updatedAt": "2026-09-23T08:05:15.873174Z",
+            "isLatest": true
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ai.agent-bev/bev-door",
+          "description": "The world's largest agentic B2B hub for beer, wine and spirits. Powered by CUVEE. Trade only.",
+          "title": "agent-bev",
+          "repository": {
+            "url": "https://github.com/agent-bev/bev-door",
+            "source": "github"
+          },
+          "version": "0.2.5",
+          "websiteUrl": "https://agent-bev.ai",
+          "icons": [
+            {
+              "src": "https://agent-bev.ai/brand/icon-512.png",
+              "mimeType": "image/png",
+              "sizes": [
+                "512x512"
+              ]
+            }
+          ],
+          "packages": [
+            {
+              "registryType": "npm",
+              "registryBaseUrl": "https://registry.npmjs.org",
+              "identifier": "@agent-bev/mcp-server",
+              "version": "0.2.5",
+              "transport": {
+                "type": "stdio"
+              }
+            }
+          ],
+          "remotes": [
+            {
+              "type": "streamable-http",
+              "url": "https://mcp.bev-buyer.ai/mcp"
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-09-30T02:38:24.149981Z",
+            "publishedAt": "2026-09-30T02:38:24.149981Z",
+            "updatedAt": "2026-09-30T02:38:24.149981Z",
+            "isLatest": true
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ac.snag/snag",
+          "description": "Gives your coding agent the captured console, network, replay and screenshot evidence for a bug.",
+          "version": "1.0.0",
+          "remotes": [
+            {
+              "type": "streamable-http",
+              "url": "https://mcp.snag.ac/mcp"
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-09-09T10:35:53.194664Z",
+            "publishedAt": "2026-09-09T10:35:53.194664Z",
+            "updatedAt": "2026-09-09T10:35:53.194664Z",
+            "isLatest": true
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "nextCursor": "ai.alpic.alpix/Alpix:0.0.1",
+      "count": 7
+    }
+  },
+  "pagina_versiones": {
+    "servers": [
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ac.inference.sh/mcp",
+          "description": "Run 150+ AI apps — image, video, audio, LLMs, 3D and more. Browse, execute, stream results.",
+          "title": "inference.sh",
+          "version": "1.0.0",
+          "remotes": [
+            {
+              "type": "streamable-http",
+              "url": "https://sh.inference.ac"
+            },
+            {
+              "type": "streamable-http",
+              "url": "https://api.inference.sh/mcp"
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-04-13T17:32:20.852269Z",
+            "publishedAt": "2026-04-13T17:32:20.852269Z",
+            "updatedAt": "2026-04-13T17:32:20.852269Z",
+            "isLatest": false
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ac.inference.sh/mcp",
+          "description": "Run 150+ AI apps — image, video, audio, LLMs, 3D and more. Browse, execute, stream results.",
+          "title": "inference.sh",
+          "version": "1.0.1",
+          "remotes": [
+            {
+              "type": "streamable-http",
+              "url": "https://sh.inference.ac"
+            },
+            {
+              "type": "streamable-http",
+              "url": "https://api.inference.sh/mcp"
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-04-13T17:33:26.613537Z",
+            "publishedAt": "2026-04-13T17:33:26.613537Z",
+            "updatedAt": "2026-04-13T17:33:26.613537Z",
+            "isLatest": false
+          }
+        }
+      },
+      {
+        "server": {
+          "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+          "name": "ac.inference.sh/mcp",
+          "description": "run any ai model. compose agents, stack knowledge, connect tools. one api, pay per run.",
+          "title": "inference.sh",
+          "version": "2.0.0",
+          "remotes": [
+            {
+              "type": "streamable-http",
+              "url": "https://sh.inference.ac"
+            },
+            {
+              "type": "streamable-http",
+              "url": "https://api.inference.sh/mcp"
+            }
+          ]
+        },
+        "_meta": {
+          "io.modelcontextprotocol.registry/official": {
+            "status": "active",
+            "statusChangedAt": "2026-07-20T18:02:33.295284Z",
+            "publishedAt": "2026-07-20T18:02:33.295284Z",
+            "updatedAt": "2026-07-20T18:02:33.295284Z",
+            "isLatest": false
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "nextCursor": "ac.inference.sh/mcp:2.0.0",
+      "count": 3
+    }
+  }
+}

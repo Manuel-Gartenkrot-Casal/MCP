@@ -1,0 +1,27 @@
+name = "catalogo-mcp-busqueda"
+main = "src/worker.ts"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "catalogo-mcp"
+database_id = "REPLACE_ME"
+
+[[vectorize]]
+binding = "VECTORS"
+index_name = "catalogo-mcp"
+
+[ai]
+binding = "AI"
+
+[[r2_buckets]]
+binding = "LOGS"
+bucket_name = "catalogo-mcp-logs"
+
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
