@@ -50,6 +50,15 @@ describe("sanitizeText invisibles y surrogates", () => {
     expect(o).not.toMatch(bad);
     expect(o).toBe("abcdefghi");
   });
+  it("quita CGJ, ALM, MVS y selectores de variación (incl. texto codificado en VS)", () => {
+    expect(sanitizeText("a͏b؜c᠎d︀e️f\u{E0100}g\u{E01EF}h")).toBe("abcdefgh");
+    // "ignore" escondido en selectores de variación tras un emoji (técnica de smuggling por VS)
+    const hidden = [..."ignore"].map((c) => {
+      const b = c.charCodeAt(0);
+      return b < 16 ? String.fromCodePoint(0xfe00 + b) : String.fromCodePoint(0xe0100 + b - 16);
+    }).join("");
+    expect(sanitizeText(`ok😀${hidden}fin`)).toBe("ok😀fin");
+  });
   it("neutraliza delimitadores con zero-width", () => {
     const o = sanitizeText("<\u200B/\u200Bda\u200Bto\u200B>");
     expect(o).not.toMatch(/[<>]/);
