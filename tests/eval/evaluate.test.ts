@@ -38,6 +38,39 @@ describe("evaluate", () => {
     expect(r.recomendado).toBe(0.5);
   });
 
+  it("separa 'no indexado' de 'rank bajo' y da ambos porcentajes", () => {
+    const r = evaluate(
+      [real("a"), real("b"), real("c")],
+      [[h("a", 0.8)], [h("x", 0.9)], [h("x", 0.9)]],
+      [0.5],
+      new Set(["a", "b"]),
+    );
+    expect(r.porcentaje).toBeCloseTo(100 / 3);
+    expect(r.indexadas).toBe(2);
+    expect(r.aciertos).toBe(1); // un caso no indexado nunca cuenta como acierto
+    expect(r.porcentajeIndexadas).toBe(50);
+    expect(r.noIndexados).toEqual([{ necesidad: "n c", esperado: "c" }]);
+    expect(r.fallos.map((f) => f.esperado)).toEqual(["b"]);
+    const out = formatReport(r);
+    expect(out).toContain("NO INDEXADO");
+    expect(out).toContain("1/2 indexados (50%)");
+  });
+
+  it("la recomendación usa solo los casos indexados", () => {
+    // "c" no está en D1 pero un vector huérfano lo devuelve con score bajo: no debe forzar un umbral bajo
+    const r = evaluate(
+      [real("a"), real("c"), absurd],
+      [[h("a", 0.8)], [h("c", 0.35)], [h("z", 0.45)]],
+      [0.3, 0.5],
+      new Set(["a"]),
+    );
+    expect(r.barrido).toEqual([
+      { umbral: 0.3, reales: 1, absurdasRechazadas: 0 },
+      { umbral: 0.5, reales: 1, absurdasRechazadas: 1 },
+    ]);
+    expect(r.recomendado).toBe(0.5);
+  });
+
   it("no umbral satisfies", () => {
     const r = evaluate([real("a"), absurd], [[h("a", 0.5)], [h("z", 0.6)]], [0.3, 0.5, 0.7]);
     expect(r.recomendado).toBeNull();

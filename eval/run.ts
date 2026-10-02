@@ -66,7 +66,10 @@ export async function main(): Promise<void> {
     );
     results.push(hits);
   }
-  console.log(formatReport(evaluate(cases, results)));
+  // Which esperado ids are in D1 at all (parametrized, chunked <= 100 ids): tells "not indexed" from "ranked low".
+  const esperados = [...new Set(cases.flatMap((c) => (c.esperado ? [c.esperado] : [])))];
+  const indexados = new Set((await getEntries(esperados)).map((e) => e.id));
+  console.log(formatReport(evaluate(cases, results, undefined, indexados)));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
