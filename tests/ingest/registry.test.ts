@@ -51,6 +51,31 @@ describe("normalizeEntry", () => {
     raw.server.remotes = [{ type: "sse", url: "https://a/sse" }, { type: "streamable-http", url: "https://a/mcp" }];
     expect(normalizeEntry(raw)!.como_conectar).toBe("https://a/mcp");
   });
+  it("identifier/version con metacaracteres de shell => sin comando (y sin conexión => null)", () => {
+    const evil = ["a;rm -rf /", "$(curl x)", "`id`", "a b", "a\nb", "a&&b", "a|b"];
+    for (const bad of evil) {
+      for (const field of ["identifier", "version"] as const) {
+        const raw = structuredClone(by("agency.kesey/pretrip"));
+        raw.server.packages = [{ ...raw.server.packages[0], [field]: bad }];
+        expect(normalizeEntry(raw), `${field}=${JSON.stringify(bad)}`).toBeNull();
+      }
+    }
+  });
+  it("paquete inválido se salta y se usa el siguiente válido", () => {
+    const raw = structuredClone(by("agency.kesey/pretrip"));
+    raw.server.packages = [
+      { registryType: "npm", identifier: "x;id", version: "1.0.0" },
+      { registryType: "pypi", identifier: "ok-pkg", version: "1.2.3" },
+    ];
+    expect(normalizeEntry(raw)!.como_conectar).toBe("uvx ok-pkg==1.2.3");
+  });
+  it("identificadores válidos con @, /, :, +, ~", () => {
+    const raw = structuredClone(by("agency.kesey/pretrip"));
+    raw.server.packages = [{ registryType: "npm", identifier: "@scope/pkg", version: "1.0.0+b~1" }];
+    expect(normalizeEntry(raw)!.como_conectar).toBe("npx -y @scope/pkg@1.0.0+b~1");
+    raw.server.packages = [{ registryType: "oci", identifier: "ghcr.io/o/img:1.2" }];
+    expect(normalizeEntry(raw)!.como_conectar).toBe("docker run -i --rm ghcr.io/o/img:1.2");
+  });
   it("sin conexión => null", () => {
     expect(normalizeEntry(by("ai.agentxray/amazon-seller-mcp"))).toBeNull();
   });

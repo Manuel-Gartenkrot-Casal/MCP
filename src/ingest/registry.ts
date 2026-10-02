@@ -6,10 +6,14 @@ const MAX_PAGES = 1000;
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v : undefined);
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
+// identifier/version are untrusted and end up in a copy-pasted shell command: allow-list only.
+const SAFE = /^[@\w.\/:+~-]+$/;
+
 function localCommand(p: any): string | undefined {
   const id = str(p?.identifier);
-  if (!id) return undefined;
+  if (!id || !SAFE.test(id)) return undefined;
   const v = str(p.version);
+  if (v && !SAFE.test(v)) return undefined;
   switch (p.registryType) {
     case "npm": return `npx -y ${id}${v ? "@" + v : ""}`;
     case "pypi": return `uvx ${id}${v ? "==" + v : ""}`;
