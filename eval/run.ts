@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { buscar, type SearchDeps } from "../src/search/buscar";
 import { embedWorkersAI } from "../src/ingest/cloudflare";
@@ -53,7 +54,7 @@ export async function main(): Promise<void> {
   const query = vectorizeQuery({ accountId, index, token });
   const embed = embedWorkersAI({ accountId, token });
   const getEntries = d1GetEntries({ accountId, databaseId, token });
-  const cases: Case[] = JSON.parse(readFileSync(fileURLToPath(new URL("./casos.json", import.meta.url)), "utf8"));
+  const cases: Case[] = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "casos.json"), "utf8"));
   const results: Hit[][] = [];
   for (const c of cases) {
     let hits: Hit[] = [];
