@@ -10,7 +10,7 @@ const entry = (id: string, o: Partial<Entry> = {}): Entry => ({
 function deps(hits: { id: string; score: number }[], entries: Entry[]) {
   const d = {
     embed: vi.fn(async (_t: string) => [1]),
-    nearest: vi.fn(async () => hits),
+    nearest: vi.fn(async (_v: number[], _n: number) => hits),
     getEntries: vi.fn(async (ids: string[]) => entries.filter((e) => ids.includes(e.id))),
   };
   return d satisfies SearchDeps;
