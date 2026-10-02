@@ -84,4 +84,23 @@ describe("d1RestStore", () => {
     expect(err.message).toContain("syntax error");
     expect(err.message).not.toContain(TOKEN);
   });
+
+  const raw = (text: string, status = 200) =>
+    (async () => new Response(text, { status })) as unknown as typeof fetch;
+
+  it("200 con cuerpo no JSON rechaza (upsert y get)", async () => {
+    const s = d1RestStore(cfg, raw("<html>oops</html>"));
+    await expect(s.upsertEntry(entry())).rejects.toThrow(/D1/);
+    await expect(s.getActualizados(["a"])).rejects.toThrow(/D1/);
+  });
+
+  it("200 JSON sin success:true rechaza", async () => {
+    const s = d1RestStore(cfg, raw("{}"));
+    await expect(s.upsertEntry(entry())).rejects.toThrow(/D1/);
+  });
+
+  it("result[0].success:false rechaza", async () => {
+    const s = d1RestStore(cfg, raw(JSON.stringify({ success: true, result: [{ success: false, results: [] }] })));
+    await expect(s.upsertEntry(entry())).rejects.toThrow(/D1/);
+  });
 });

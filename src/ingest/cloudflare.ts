@@ -26,7 +26,7 @@ export function d1RestStore(
       body: JSON.stringify({ sql, params }),
     });
     const body: any = await res.json().catch(() => ({}));
-    if (!res.ok || body.success === false) {
+    if (!res.ok || body.success !== true || body.result?.[0]?.success === false) {
       const msg = (body.errors ?? []).map((e: any) => e.message).join("; ");
       throw new Error(`D1 query failed (HTTP ${res.status})${msg ? `: ${msg}` : ""}`);
     }
