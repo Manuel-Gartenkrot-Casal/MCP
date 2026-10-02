@@ -5,14 +5,18 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ingest
+  cancel-in-progress: false
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm ci
       - run: npx tsx src/ingest/run.ts
         env:
