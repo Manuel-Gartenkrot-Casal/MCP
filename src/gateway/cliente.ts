@@ -6,6 +6,9 @@ export interface Destino { url: string; sessionId?: string; version?: string }
 export const TIMEOUT_MS = 20000;
 export const MAX_BYTES = 256 * 1024;
 const PROTOCOL = "2025-06-18";
+// El Worker rechaza peticiones entrantes con este prefijo (evita bucles hacia sí mismo por otro dominio).
+export const UA_PREFIJO = "catalogo-mcp-busqueda/";
+const UA = `${UA_PREFIJO}0.1 (+https://github.com/Manuel-Gartenkrot-Casal/MCP)`;
 const VERSIONES = [PROTOCOL, "2025-03-26", "2024-11-05"];
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -52,7 +55,7 @@ async function enviar(d: Destino, msg: { id?: number; [k: string]: unknown }, fe
     "Content-Type": "application/json",
     "Accept": "application/json, text/event-stream",
     "MCP-Protocol-Version": VERSIONES.includes(d.version ?? "") ? d.version! : PROTOCOL,
-    "User-Agent": "catalogo-mcp-busqueda/0.1 (+gateway)",
+    "User-Agent": UA,
   };
   if (d.sessionId) headers["Mcp-Session-Id"] = d.sessionId;
   let res: Response;

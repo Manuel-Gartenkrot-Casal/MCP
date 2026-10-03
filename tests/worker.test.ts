@@ -144,6 +144,26 @@ describe("worker MCP", () => {
     expect(env.AI.run).not.toHaveBeenCalled();
   });
 
+  describe("petición recursiva (User-Agent propio)", () => {
+    const conUA = (ua?: string) => {
+      const r = call({ necesidad: "x" });
+      if (ua === undefined) r.headers.delete("user-agent"); else r.headers.set("user-agent", ua);
+      return r;
+    };
+    it.each(["catalogo-mcp-busqueda/0.1 (+https://github.com/Manuel-Gartenkrot-Casal/MCP)", "catalogo-mcp-busqueda/9"])("%s -> 403 antes del limitador", async (ua) => {
+      const env = makeEnv();
+      const res = await worker.fetch(conUA(ua), env as any, ctx());
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ jsonrpc: "2.0", id: null, error: { code: -32000, message: "Petición recursiva rechazada." } });
+      expect(env.LIMITER.limit).not.toHaveBeenCalled(); expect(env.AI.run).not.toHaveBeenCalled(); expect(env.DB.prepare).not.toHaveBeenCalled();
+    });
+    it.each([undefined, "Mozilla/5.0", "x catalogo-mcp-busqueda/0.1"])("UA %s no se ve afectado", async (ua) => {
+      const res = await worker.fetch(conUA(ua), makeEnv() as any, ctx());
+      expect(res.status).toBe(200);
+      expect((await json(res)).result.content[0].text).toContain("<dato>Alfa</dato>");
+    });
+  });
+
   describe("lotes JSON-RPC", () => {
     const raw = (body: string) => new Request("https://w.example/mcp", {
       method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "CF-Connecting-IP": "9.9.9.9" }, body,

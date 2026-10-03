@@ -170,7 +170,7 @@ describe("cabeceras", () => {
       expect(h["Accept"]).toBe("application/json, text/event-stream");
       expect(h["MCP-Protocol-Version"]).toBe("2025-06-18");
       expect(h["Content-Type"]).toBe("application/json");
-      expect(h["User-Agent"]).toBe("catalogo-mcp-busqueda/0.1 (+gateway)");
+      expect(h["User-Agent"]).toBe("catalogo-mcp-busqueda/0.1 (+https://github.com/Manuel-Gartenkrot-Casal/MCP)");
     }
   });
 });

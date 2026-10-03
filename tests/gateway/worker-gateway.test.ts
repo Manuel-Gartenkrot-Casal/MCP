@@ -13,7 +13,7 @@ const row = (o: any = {}) => ({ id: "a", nombre: "Alfa", descripcion: "d", url_i
   como_conectar: "https://destino.example/mcp", auth: "ninguna", incompleta: 0, actualizado: "2026-01-01T00:00:00Z", ...o });
 
 function makeEnv(o: { rows?: any[]; gateway?: string | undefined; limitExplorar?: boolean; limitLlamar?: boolean; throwLimiter?: boolean;
-  putFails?: boolean; resultText?: string; stubThrows?: boolean; callStatus?: number; listStatus?: number } = {}) {
+  putFails?: boolean; resultText?: string; stubThrows?: boolean; callStatus?: number; listStatus?: number; bloqueados?: string } = {}) {
   const rows = o.rows ?? [row()];
   const fetchCalls: any[] = [];
   const fetchFn = (async (url: any, init: any) => {
@@ -39,6 +39,7 @@ function makeEnv(o: { rows?: any[]; gateway?: string | undefined; limitExplorar?
   return {
     fetchCalls, idFromName, get,
     GATEWAY_ENABLED: "gateway" in o ? o.gateway : "1",
+    ...(o.bloqueados !== undefined && { GATEWAY_BLOQUEADOS: o.bloqueados }),
     AI: { run: vi.fn(async () => ({ data: [new Array(1024).fill(0.1)] })) },
     VECTORS: { query: vi.fn(async () => ({ matches: [{ id: "a", score: 0.9 }] })) },
     DB: { prepare: vi.fn((_s: string) => ({ bind: (...ids: string[]) => {
@@ -273,6 +274,21 @@ describe("gateway tools", () => {
     for (const [n, a] of [["explorar", { servidor: "a" }], ["llamar", { servidor: "a", herramienta: "leer" }]] as const) {
       expect(await tool(env, n, a)).toEqual({ isError: true, text: "error interno" });
     }
+  });
+
+  describe("GATEWAY_BLOQUEADOS", () => {
+    const NO = { isError: true, text: "Servidor no encontrado en el catálogo." };
+    it.each(["a", " x , a ,, ", ",a"])("lista %j bloquea 'a' como desconocido sin D1/DO/red", async (lista) => {
+      for (const name of ["explorar", "llamar"]) {
+        const env: any = makeEnv({ bloqueados: lista });
+        expect(await tool(env, name, { servidor: "a", herramienta: "leer" })).toEqual(NO);
+        noWork(env);
+      }
+    });
+    it.each([undefined, "", " , ", "A", "b,ab", "a b"])("lista %j no bloquea 'a'", async (lista) => {
+      const env: any = makeEnv(lista === undefined ? {} : { bloqueados: lista });
+      expect((await tool(env, "explorar", { servidor: "a" })).isError).toBe(false);
+    });
   });
 
   it("consulta D1 parametrizada", async () => {

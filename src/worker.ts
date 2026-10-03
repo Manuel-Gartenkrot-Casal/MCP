@@ -6,6 +6,7 @@ import { parseRerankResponse } from "./search/rerank";
 import { formatResultados } from "./search/sanitize";
 import { logBusqueda } from "./log";
 import { registerGateway, type GwEnv } from "./gateway/tools";
+import { UA_PREFIJO } from "./gateway/cliente";
 import type { Entry } from "./types";
 
 export { SesionDO } from "./gateway/sesion";
@@ -108,6 +109,7 @@ async function readCapped(req: Request): Promise<Uint8Array | null> {
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    if (req.headers.get("user-agent")?.startsWith(UA_PREFIJO)) return err(403, "Petición recursiva rechazada.");
     let success = true;
     const ip = req.headers.get("CF-Connecting-IP") ?? "anon";
     try {

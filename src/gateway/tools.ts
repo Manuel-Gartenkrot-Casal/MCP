@@ -9,7 +9,7 @@ import { logLlamada } from "../log";
 
 export interface GwEnv {
   DB: D1Database; LOGS: R2Bucket; SESIONES: DurableObjectNamespace<SesionDO>;
-  LIMITER_EXPLORAR: RateLimit; LIMITER_LLAMAR: RateLimit; GATEWAY_ENABLED?: string;
+  LIMITER_EXPLORAR: RateLimit; LIMITER_LLAMAR: RateLimit; GATEWAY_ENABLED?: string; GATEWAY_BLOQUEADOS?: string;
 }
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], ...(isError ? { isError } : {}) });
@@ -41,6 +41,8 @@ export function registerGateway(server: McpServer, env: GwEnv, ctx: ExecutionCon
     try { ({ success } = await limiter.limit({ key: ip })); } catch { /* fail open */ }
     if (!success) throw new Limite(LIMITE);
     if (!valida || (a.sesion !== undefined && !TOKEN.test(a.sesion))) throw new GatewayError("entrada_invalida");
+    // Freno del operador: ids bloqueados se tratan como desconocidos (exacto, sensible a mayúsculas).
+    if ((env.GATEWAY_BLOQUEADOS ?? "").split(",").map((x) => x.trim()).includes(a.servidor)) throw new GatewayError("no_encontrado");
     const r = await env.DB.prepare("SELECT id, tipo_conexion, como_conectar FROM entradas WHERE id = ?").bind(a.servidor).first<any>();
     if (!r) throw new GatewayError("no_encontrado");
     if (r.tipo_conexion !== "remoto") throw new GatewayError("no_remoto");
