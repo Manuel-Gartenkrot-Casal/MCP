@@ -1,0 +1,2220 @@
+{
+  "fecha": "2026-10-03T20:13:28.838Z",
+  "documentos": 4500,
+  "consultas": 23,
+  "configs": [
+    {
+      "nombre": "bge-m3",
+      "modelo": "@cf/baai/bge-m3",
+      "dimsNativas": 1024,
+      "neuronas": null,
+      "resultados": [
+        {
+          "dim": 1024,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 12,
+              "mejor": 0.5586521625518799,
+              "scoreEsperado": 0.49105575680732727
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6614103317260742,
+              "scoreEsperado": 0.6614103317260742
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.572881281375885,
+              "scoreEsperado": 0.572881281375885
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 12,
+              "mejor": 0.4547765851020813,
+              "scoreEsperado": 0.4306544065475464
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5770944356918335,
+              "scoreEsperado": 0.5770944356918335
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.5956305861473083,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5968955159187317,
+              "scoreEsperado": 0.5968955159187317
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 5,
+              "mejor": 0.469012051820755,
+              "scoreEsperado": 0.4484771192073822
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.4378706216812134,
+              "scoreEsperado": 0.4297283887863159
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 14,
+              "mejor": 0.5954838991165161,
+              "scoreEsperado": 0.47644704580307007
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 4,
+              "mejor": 0.5215697884559631,
+              "scoreEsperado": 0.4978519082069397
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 193,
+              "mejor": 0.5637257099151611,
+              "scoreEsperado": 0.4217785596847534
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.5375705361366272,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 6,
+              "mejor": 0.6452438831329346,
+              "scoreEsperado": 0.6249001622200012
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6213369965553284,
+              "scoreEsperado": 0.6213369965553284
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 10,
+              "mejor": 0.5414958596229553,
+              "scoreEsperado": 0.5150837302207947
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5116378664970398,
+              "scoreEsperado": 0.5116378664970398
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6478509306907654,
+              "scoreEsperado": 0.6478509306907654
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.6377094984054565,
+              "scoreEsperado": 0.6087429523468018
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5505390167236328,
+              "scoreEsperado": 0.5505390167236328
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.4195249676704407
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.5131214261054993
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.4314921200275421
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 12,
+            "top10": 14,
+            "mrr": 0.49799716259560817,
+            "porIdioma": {
+              "es": {
+                "top5": 5,
+                "reales": 8
+              },
+              "en": {
+                "top5": 7,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.5683034956455231,
+            "minMejorReal": 0.4378706216812134,
+            "maxMejorAbsurda": 0.5131214261054993,
+            "separable": false
+          }
+        }
+      ]
+    },
+    {
+      "nombre": "gemma-plain",
+      "modelo": "@cf/google/embeddinggemma-300m",
+      "dimsNativas": 768,
+      "neuronas": null,
+      "resultados": [
+        {
+          "dim": 768,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4920877516269684,
+              "scoreEsperado": 0.4920877516269684
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6304156184196472,
+              "scoreEsperado": 0.6304156184196472
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5625231266021729,
+              "scoreEsperado": 0.5625231266021729
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.44430333375930786,
+              "scoreEsperado": 0.44430333375930786
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5540832877159119,
+              "scoreEsperado": 0.5540832877159119
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.5429087281227112,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.45411863923072815,
+              "scoreEsperado": 0.45411863923072815
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5412814021110535,
+              "scoreEsperado": 0.5412814021110535
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4619697630405426,
+              "scoreEsperado": 0.4619697630405426
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 7,
+              "mejor": 0.664182186126709,
+              "scoreEsperado": 0.578799307346344
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5390591621398926,
+              "scoreEsperado": 0.5390591621398926
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 8,
+              "mejor": 0.5702268481254578,
+              "scoreEsperado": 0.4609485864639282
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.5828660130500793,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 3,
+              "mejor": 0.5580944418907166,
+              "scoreEsperado": 0.5387488603591919
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6463764905929565,
+              "scoreEsperado": 0.6463764905929565
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 14,
+              "mejor": 0.6552635431289673,
+              "scoreEsperado": 0.5089173913002014
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5853104591369629,
+              "scoreEsperado": 0.5853104591369629
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6807348728179932,
+              "scoreEsperado": 0.6807348728179932
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.6423793435096741,
+              "scoreEsperado": 0.5465074181556702
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.484773725271225,
+              "scoreEsperado": 0.484773725271225
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.3130023181438446
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.436250239610672
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.40838006138801575
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 15,
+            "top10": 17,
+            "mrr": 0.7086309523809524,
+            "porIdioma": {
+              "es": {
+                "top5": 7,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.5603087842464447,
+            "minMejorReal": 0.44430333375930786,
+            "maxMejorAbsurda": 0.436250239610672,
+            "separable": true
+          }
+        },
+        {
+          "dim": 512,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5409393310546875,
+              "scoreEsperado": 0.5409393310546875
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6561722159385681,
+              "scoreEsperado": 0.6561722159385681
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5678901076316833,
+              "scoreEsperado": 0.5678901076316833
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.47635912895202637,
+              "scoreEsperado": 0.47635912895202637
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5781440138816833,
+              "scoreEsperado": 0.5781440138816833
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.5631445646286011,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5031086802482605,
+              "scoreEsperado": 0.5031086802482605
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.56966632604599,
+              "scoreEsperado": 0.56966632604599
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.510835587978363,
+              "scoreEsperado": 0.5067929029464722
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 6,
+              "mejor": 0.679263174533844,
+              "scoreEsperado": 0.5957960486412048
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5549588203430176,
+              "scoreEsperado": 0.5549588203430176
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 7,
+              "mejor": 0.5674088597297668,
+              "scoreEsperado": 0.4953673481941223
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.6112003326416016,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 4,
+              "mejor": 0.6094179749488831,
+              "scoreEsperado": 0.5733353495597839
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6692331433296204,
+              "scoreEsperado": 0.6692331433296204
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 18,
+              "mejor": 0.6484020948410034,
+              "scoreEsperado": 0.5179574489593506
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6197992563247681,
+              "scoreEsperado": 0.6197992563247681
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.7038145065307617,
+              "scoreEsperado": 0.7038145065307617
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.6903460025787354,
+              "scoreEsperado": 0.5941218137741089
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5252471566200256,
+              "scoreEsperado": 0.5252471566200256
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.36172744631767273
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.502388596534729
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.44366374611854553
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 15,
+            "top10": 17,
+            "mrr": 0.6807539682539683,
+            "porIdioma": {
+              "es": {
+                "top5": 7,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.5739051699638367,
+            "minMejorReal": 0.47635912895202637,
+            "maxMejorAbsurda": 0.502388596534729,
+            "separable": false
+          }
+        },
+        {
+          "dim": 256,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 2,
+              "mejor": 0.5951170921325684,
+              "scoreEsperado": 0.5888063311576843
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6794182658195496,
+              "scoreEsperado": 0.6794182658195496
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5845950245857239,
+              "scoreEsperado": 0.5845950245857239
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.56307452917099,
+              "scoreEsperado": 0.56307452917099
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6044755578041077,
+              "scoreEsperado": 0.6044755578041077
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.5978989005088806,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5603635311126709,
+              "scoreEsperado": 0.5603635311126709
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6032427549362183,
+              "scoreEsperado": 0.6032427549362183
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5610381364822388,
+              "scoreEsperado": 0.5610381364822388
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 19,
+              "mejor": 0.7038254141807556,
+              "scoreEsperado": 0.601551353931427
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6123327612876892,
+              "scoreEsperado": 0.6123327612876892
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 3,
+              "mejor": 0.5974302887916565,
+              "scoreEsperado": 0.5757796764373779
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.6656475067138672,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 12,
+              "mejor": 0.6463977098464966,
+              "scoreEsperado": 0.5954424738883972
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.717260479927063,
+              "scoreEsperado": 0.717260479927063
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 30,
+              "mejor": 0.7090757489204407,
+              "scoreEsperado": 0.5493688583374023
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6533690094947815,
+              "scoreEsperado": 0.6533690094947815
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.7277714610099792,
+              "scoreEsperado": 0.7277714610099792
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.7229353785514832,
+              "scoreEsperado": 0.634529709815979
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5709103345870972,
+              "scoreEsperado": 0.5709103345870972
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.4301105737686157
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.5797539353370667
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.542129635810852
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 15,
+            "top10": 15,
+            "mrr": 0.6751315789473684,
+            "porIdioma": {
+              "es": {
+                "top5": 7,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.6084041595458984,
+            "minMejorReal": 0.5603635311126709,
+            "maxMejorAbsurda": 0.5797539353370667,
+            "separable": false
+          }
+        },
+        {
+          "dim": 192,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6339761018753052,
+              "scoreEsperado": 0.6339761018753052
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6734994053840637,
+              "scoreEsperado": 0.6734994053840637
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5802572965621948,
+              "scoreEsperado": 0.5802572965621948
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.596400797367096,
+              "scoreEsperado": 0.596400797367096
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6372427344322205,
+              "scoreEsperado": 0.6372427344322205
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.6431741714477539,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 6,
+              "mejor": 0.570447564125061,
+              "scoreEsperado": 0.54135662317276
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6276372075080872,
+              "scoreEsperado": 0.6276372075080872
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.6242805123329163,
+              "scoreEsperado": 0.6237964630126953
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 17,
+              "mejor": 0.7165878415107727,
+              "scoreEsperado": 0.6279480457305908
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.640466034412384,
+              "scoreEsperado": 0.640466034412384
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.6484424471855164,
+              "scoreEsperado": 0.6356173753738403
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.669795036315918,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 26,
+              "mejor": 0.6780072450637817,
+              "scoreEsperado": 0.6149338483810425
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.7582909464836121,
+              "scoreEsperado": 0.7582909464836121
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 27,
+              "mejor": 0.7327264547348022,
+              "scoreEsperado": 0.5704625248908997
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6686647534370422,
+              "scoreEsperado": 0.6686647534370422
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.7619179487228394,
+              "scoreEsperado": 0.7619179487228394
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.7377998232841492,
+              "scoreEsperado": 0.679158091545105
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5889974236488342,
+              "scoreEsperado": 0.5889974236488342
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.4638497531414032
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.6288846135139465
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.5622809529304504
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 14,
+            "top10": 15,
+            "mrr": 0.6400494385788503,
+            "porIdioma": {
+              "es": {
+                "top5": 6,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.6458083093166351,
+            "minMejorReal": 0.570447564125061,
+            "maxMejorAbsurda": 0.6288846135139465,
+            "separable": false
+          }
+        },
+        {
+          "dim": 128,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 4,
+              "mejor": 0.711216151714325,
+              "scoreEsperado": 0.6788405179977417
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.7678568959236145,
+              "scoreEsperado": 0.7678568959236145
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6427868604660034,
+              "scoreEsperado": 0.6427868604660034
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6055523157119751,
+              "scoreEsperado": 0.6055523157119751
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6907760500907898,
+              "scoreEsperado": 0.6907760500907898
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.64152991771698,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 31,
+              "mejor": 0.6143043637275696,
+              "scoreEsperado": 0.5591825246810913
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6849446892738342,
+              "scoreEsperado": 0.6849446892738342
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 12,
+              "mejor": 0.6494458913803101,
+              "scoreEsperado": 0.6187724471092224
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 5,
+              "mejor": 0.7536550164222717,
+              "scoreEsperado": 0.7047902941703796
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6673738360404968,
+              "scoreEsperado": 0.6673738360404968
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 4,
+              "mejor": 0.6881499886512756,
+              "scoreEsperado": 0.6520933508872986
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.7248437404632568,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 118,
+              "mejor": 0.7154855132102966,
+              "scoreEsperado": 0.595188319683075
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.7689715027809143,
+              "scoreEsperado": 0.7689715027809143
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 135,
+              "mejor": 0.7780147790908813,
+              "scoreEsperado": 0.5785882472991943
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6854689717292786,
+              "scoreEsperado": 0.6854689717292786
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.7934630513191223,
+              "scoreEsperado": 0.7934630513191223
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.784102737903595,
+              "scoreEsperado": 0.6919829845428467
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6266640424728394,
+              "scoreEsperado": 0.6266640424728394
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.5159033536911011
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.6663640737533569
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.5812722444534302
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 14,
+            "top10": 14,
+            "mrr": 0.5665736690764028,
+            "porIdioma": {
+              "es": {
+                "top5": 6,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.6894630193710327,
+            "minMejorReal": 0.6055523157119751,
+            "maxMejorAbsurda": 0.6663640737533569,
+            "separable": false
+          }
+        }
+      ]
+    },
+    {
+      "nombre": "gemma-prompt",
+      "modelo": "@cf/google/embeddinggemma-300m",
+      "dimsNativas": 768,
+      "neuronas": null,
+      "resultados": [
+        {
+          "dim": 768,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.319814532995224,
+              "scoreEsperado": 0.319814532995224
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5564293265342712,
+              "scoreEsperado": 0.5564293265342712
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4469478726387024,
+              "scoreEsperado": 0.4469478726387024
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.30712711811065674,
+              "scoreEsperado": 0.30712711811065674
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.40405669808387756,
+              "scoreEsperado": 0.40405669808387756
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.4320432245731354,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.37849897146224976,
+              "scoreEsperado": 0.37849897146224976
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.39003753662109375,
+              "scoreEsperado": 0.39003753662109375
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.39546138048171997,
+              "scoreEsperado": 0.39546138048171997
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 6,
+              "mejor": 0.4319779574871063,
+              "scoreEsperado": 0.3397946357727051
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.40720096230506897,
+              "scoreEsperado": 0.40720096230506897
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 4,
+              "mejor": 0.4121595621109009,
+              "scoreEsperado": 0.3460747003555298
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.38199716806411743,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 3,
+              "mejor": 0.4514152407646179,
+              "scoreEsperado": 0.4245889484882355
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.501945972442627,
+              "scoreEsperado": 0.501945972442627
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 8,
+              "mejor": 0.4897325932979584,
+              "scoreEsperado": 0.39362457394599915
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.46277421712875366,
+              "scoreEsperado": 0.46277421712875366
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5772616267204285,
+              "scoreEsperado": 0.5772616267204285
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 3,
+              "mejor": 0.462172269821167,
+              "scoreEsperado": 0.36945047974586487
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.40092483162879944,
+              "scoreEsperado": 0.40092483162879944
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.17854177951812744
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.34673476219177246
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.2634079158306122
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 16,
+            "top10": 18,
+            "mrr": 0.7104166666666667,
+            "porIdioma": {
+              "es": {
+                "top5": 7,
+                "reales": 8
+              },
+              "en": {
+                "top5": 9,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.4220687597990036,
+            "minMejorReal": 0.30712711811065674,
+            "maxMejorAbsurda": 0.34673476219177246,
+            "separable": false
+          }
+        },
+        {
+          "dim": 512,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 2,
+              "mejor": 0.3348068594932556,
+              "scoreEsperado": 0.33413165807724
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5611593127250671,
+              "scoreEsperado": 0.5611593127250671
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.43192341923713684,
+              "scoreEsperado": 0.43192341923713684
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.3290926218032837,
+              "scoreEsperado": 0.3290926218032837
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.41807013750076294,
+              "scoreEsperado": 0.41807013750076294
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.42618823051452637,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.3919976055622101,
+              "scoreEsperado": 0.3919976055622101
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4012313485145569,
+              "scoreEsperado": 0.4012313485145569
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4078387916088104,
+              "scoreEsperado": 0.4078387916088104
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 5,
+              "mejor": 0.4333593547344208,
+              "scoreEsperado": 0.36900514364242554
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.41684138774871826,
+              "scoreEsperado": 0.41684138774871826
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.3945356011390686,
+              "scoreEsperado": 0.3731215000152588
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.39197733998298645,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 6,
+              "mejor": 0.46272221207618713,
+              "scoreEsperado": 0.42952096462249756
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5211539268493652,
+              "scoreEsperado": 0.5211539268493652
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 8,
+              "mejor": 0.4644046425819397,
+              "scoreEsperado": 0.3690899610519409
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4695027768611908,
+              "scoreEsperado": 0.4695027768611908
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5860691666603088,
+              "scoreEsperado": 0.5860691666603088
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 3,
+              "mejor": 0.49363574385643005,
+              "scoreEsperado": 0.4086732268333435
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.415373831987381,
+              "scoreEsperado": 0.415373831987381
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.20019711554050446
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.3898448050022125
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.2728155851364136
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 16,
+            "top10": 18,
+            "mrr": 0.6912499999999999,
+            "porIdioma": {
+              "es": {
+                "top5": 7,
+                "reales": 8
+              },
+              "en": {
+                "top5": 9,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.42212918400764465,
+            "minMejorReal": 0.3290926218032837,
+            "maxMejorAbsurda": 0.3898448050022125,
+            "separable": false
+          }
+        },
+        {
+          "dim": 256,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 2,
+              "mejor": 0.3908250331878662,
+              "scoreEsperado": 0.36709675192832947
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5673810839653015,
+              "scoreEsperado": 0.5673810839653015
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.47776538133621216,
+              "scoreEsperado": 0.47776538133621216
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.38939040899276733,
+              "scoreEsperado": 0.38939040899276733
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4437822997570038,
+              "scoreEsperado": 0.4437822997570038
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.46477001905441284,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4507879912853241,
+              "scoreEsperado": 0.4507879912853241
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4398992359638214,
+              "scoreEsperado": 0.4398992359638214
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4386250674724579,
+              "scoreEsperado": 0.4386250674724579
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 22,
+              "mejor": 0.4555410146713257,
+              "scoreEsperado": 0.3555012345314026
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4607785940170288,
+              "scoreEsperado": 0.4607785940170288
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.4309855103492737,
+              "scoreEsperado": 0.4237399399280548
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.4684145152568817,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 26,
+              "mejor": 0.5158527493476868,
+              "scoreEsperado": 0.4282325506210327
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6048110723495483,
+              "scoreEsperado": 0.6048110723495483
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 12,
+              "mejor": 0.5398854613304138,
+              "scoreEsperado": 0.39298558235168457
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5137843489646912,
+              "scoreEsperado": 0.5137843489646912
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6115353107452393,
+              "scoreEsperado": 0.6115353107452393
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.5453532934188843,
+              "scoreEsperado": 0.48182183504104614
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.41624799370765686,
+              "scoreEsperado": 0.41624799370765686
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.28416430950164795
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.4559594690799713
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.3659450113773346
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 15,
+            "top10": 15,
+            "mrr": 0.6833624708624709,
+            "porIdioma": {
+              "es": {
+                "top5": 7,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.4627743065357208,
+            "minMejorReal": 0.38939040899276733,
+            "maxMejorAbsurda": 0.4559594690799713,
+            "separable": false
+          }
+        },
+        {
+          "dim": 192,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4317593574523926,
+              "scoreEsperado": 0.4317593574523926
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5510112643241882,
+              "scoreEsperado": 0.5510112643241882
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4318777918815613,
+              "scoreEsperado": 0.4318777918815613
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.3855065107345581,
+              "scoreEsperado": 0.3855065107345581
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.49447470903396606,
+              "scoreEsperado": 0.49447470903396606
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.5002942085266113,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 3,
+              "mejor": 0.41377443075180054,
+              "scoreEsperado": 0.4069744646549225
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.46471282839775085,
+              "scoreEsperado": 0.46471282839775085
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4865240752696991,
+              "scoreEsperado": 0.4865240752696991
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 15,
+              "mejor": 0.4760359823703766,
+              "scoreEsperado": 0.3798961639404297
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.428869366645813,
+              "scoreEsperado": 0.428869366645813
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4912312626838684,
+              "scoreEsperado": 0.4912312626838684
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.4697922468185425,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 41,
+              "mejor": 0.5592148900032043,
+              "scoreEsperado": 0.46742042899131775
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6459328532218933,
+              "scoreEsperado": 0.6459328532218933
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 13,
+              "mejor": 0.5448304414749146,
+              "scoreEsperado": 0.39412757754325867
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5244670510292053,
+              "scoreEsperado": 0.5244670510292053
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6310455203056335,
+              "scoreEsperado": 0.6310455203056335
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 2,
+              "mejor": 0.5414657592773438,
+              "scoreEsperado": 0.48238739371299744
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4133124351501465,
+              "scoreEsperado": 0.4133124351501465
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.31889185309410095
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.5020936727523804
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.39923375844955444
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 15,
+            "top10": 15,
+            "mrr": 0.7000656660412756,
+            "porIdioma": {
+              "es": {
+                "top5": 7,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.48887766897678375,
+            "minMejorReal": 0.3855065107345581,
+            "maxMejorAbsurda": 0.5020936727523804,
+            "separable": false
+          }
+        },
+        {
+          "dim": 128,
+          "casos": [
+            {
+              "necesidad": "Necesito revisar la receta de construcción de mi contenedor para detectar malas prácticas de seguridad",
+              "esperado": "io.github.tylerscomic-lab/dockerfile-audit-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.48363378643989563,
+              "scoreEsperado": 0.48363378643989563
+            },
+            {
+              "necesidad": "Quiero mandar un documento certificado con acuse de recibo por correo postal en España estando fuera del país",
+              "esperado": "io.github.pedropaf/burofacil",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.6581308245658875,
+              "scoreEsperado": 0.6581308245658875
+            },
+            {
+              "necesidad": "Tengo una novela en formato de libro electrónico y quiero pasarla a otros idiomas sin que se descoloque la maquetación",
+              "esperado": "app.epubtranslator/epub-translator",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.4786389470100403,
+              "scoreEsperado": 0.4786389470100403
+            },
+            {
+              "necesidad": "Quiero cambiar de tono una canción y saber qué acordes tocar con la cejilla",
+              "esperado": "com.musokit/musokit",
+              "idioma": "es",
+              "rank": 3,
+              "mejor": 0.46285009384155273,
+              "scoreEsperado": 0.4048156440258026
+            },
+            {
+              "necesidad": "Avisarme de los días en que se publican datos de empleo e inflación de Estados Unidos para no operar en futuros esos momentos",
+              "esperado": "io.github.tylerscomic-lab/econ-calendar-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.602900505065918,
+              "scoreEsperado": 0.602900505065918
+            },
+            {
+              "necesidad": "Quiero saber qué ayudas públicas y licitaciones ha conseguido una sociedad mercantil española",
+              "esperado": "io.github.odela-pixel/asientouno",
+              "idioma": "es",
+              "rank": null,
+              "mejor": 0.5112428665161133,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "No entiendo una carta de Hacienda, ¿me la puedes ir desgranando párrafo a párrafo?",
+              "esperado": "legal.klaro/document-explainer",
+              "idioma": "es",
+              "rank": 7,
+              "mejor": 0.45824092626571655,
+              "scoreEsperado": 0.4269636571407318
+            },
+            {
+              "necesidad": "Calcular cuánto debo pagar de impuestos cada trimestre como repartidor autónomo en Estados Unidos",
+              "esperado": "io.github.tylerscomic-lab/gig-tax-mcp",
+              "idioma": "es",
+              "rank": 1,
+              "mejor": 0.5739673376083374,
+              "scoreEsperado": 0.5739673376083374
+            },
+            {
+              "necesidad": "Will it storm tomorrow in Chicago and are there any severe alerts?",
+              "esperado": "io.github.cyanheads/nws-weather-mcp-server",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4674011170864105,
+              "scoreEsperado": 0.4674011170864105
+            },
+            {
+              "necesidad": "Find the cheapest ticket price seen recently between two cities",
+              "esperado": "com.a2bflight/fares",
+              "idioma": "en",
+              "rank": 3,
+              "mejor": 0.5468377470970154,
+              "scoreEsperado": 0.5013347268104553
+            },
+            {
+              "necesidad": "Plan a trip around the world with many stops while respecting airline alliance rules",
+              "esperado": "io.github.Airtreks/airtreks-mcp",
+              "idioma": "en",
+              "rank": 15,
+              "mejor": 0.4694574773311615,
+              "scoreEsperado": 0.4070124626159668
+            },
+            {
+              "necesidad": "Browse public container images and their tags on the most popular image hub",
+              "esperado": "io.github.pipeworx-io/dockerhub",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5091777443885803,
+              "scoreEsperado": 0.5091777443885803
+            },
+            {
+              "necesidad": "Look up scientific manuscripts posted before peer review in physics and computer science",
+              "esperado": "io.github.pipeworx-io/arxiv",
+              "idioma": "en",
+              "rank": null,
+              "mejor": 0.5105656981468201,
+              "scoreEsperado": null
+            },
+            {
+              "necesidad": "Let my assistant read and answer my Outlook or Gmail messages and check my agenda",
+              "esperado": "com.mailbox-mcp/mailbox-mcp",
+              "idioma": "en",
+              "rank": 203,
+              "mejor": 0.6012066602706909,
+              "scoreEsperado": 0.41017040610313416
+            },
+            {
+              "necesidad": "Adapt my resume so it matches a job advert and score how well I fit",
+              "esperado": "app.letterin/letterin",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6190354228019714,
+              "scoreEsperado": 0.6190354228019714
+            },
+            {
+              "necesidad": "Get live prices and company filings for shares listed on Mumbai exchanges",
+              "esperado": "com.tapetide/stock-research-mcp",
+              "idioma": "en",
+              "rank": 45,
+              "mejor": 0.6393328905105591,
+              "scoreEsperado": 0.4330933392047882
+            },
+            {
+              "necesidad": "Recognise which opening a sequence of moves belongs to and give me the daily puzzle",
+              "esperado": "com.chessigma/chessigma",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.5286386609077454,
+              "scoreEsperado": 0.5286386609077454
+            },
+            {
+              "necesidad": "Check whether a company in Poland is legitimate using its tax number",
+              "esperado": "io.github.bartosz-kuc/skanfirmy",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.6598650813102722,
+              "scoreEsperado": 0.6598650813102722
+            },
+            {
+              "necesidad": "Shrink photo file sizes and switch them to another format before putting them on my site",
+              "esperado": "io.github.onepunchtechnology/glassypic",
+              "idioma": "en",
+              "rank": 3,
+              "mejor": 0.632663905620575,
+              "scoreEsperado": 0.5228734016418457
+            },
+            {
+              "necesidad": "Will my cattle overheat this summer? Compare ventilation fans and roof insulation options",
+              "esperado": "io.github.okajun35/cooling-planner",
+              "idioma": "en",
+              "rank": 1,
+              "mejor": 0.4709959924221039,
+              "scoreEsperado": 0.4709959924221039
+            }
+          ],
+          "absurdas": [
+            {
+              "necesidad": "Cocinar un soufflé usando la gravedad cuántica de un agujero negro de cocina",
+              "mejor": 0.3725951910018921
+            },
+            {
+              "necesidad": "Teach my goldfish to negotiate a mortgage using telepathic spreadsheets",
+              "mejor": 0.5443643927574158
+            },
+            {
+              "necesidad": "Convertir la tristeza de los lunes en energía renovable embotellada",
+              "mejor": 0.42029350996017456
+            }
+          ],
+          "resumen": {
+            "reales": 20,
+            "top5": 14,
+            "top10": 15,
+            "mrr": 0.6118336070060209,
+            "porIdioma": {
+              "es": {
+                "top5": 6,
+                "reales": 8
+              },
+              "en": {
+                "top5": 8,
+                "reales": 12
+              }
+            },
+            "medianaMejorReal": 0.5199407637119293,
+            "minMejorReal": 0.45824092626571655,
+            "maxMejorAbsurda": 0.5443643927574158,
+            "separable": false
+          }
+        }
+      ]
+    }
+  ]
+}
