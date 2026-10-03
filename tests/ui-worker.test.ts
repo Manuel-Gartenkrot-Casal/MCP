@@ -71,6 +71,18 @@ describe("GET / (página)", () => {
     expect(html).not.toContain("ZZTOP");
   });
 
+  it("con el limitador denegando, GET / sigue en 200 sin consultar el limitador y la API da 429", async () => {
+    const env = makeEnv({ limited: true });
+    expect((await worker.fetch(get(), env as any, ctx())).status).toBe(200);
+    expect(env.LIMITER.limit).not.toHaveBeenCalled();
+    expect((await worker.fetch(post({ necesidad: "x" }), env as any, ctx())).status).toBe(429);
+  });
+
+  it("self-loop guard sigue antes de la página", async () => {
+    const r = await worker.fetch(new Request("https://w.example/", { headers: { "user-agent": "catalogo-mcp-busqueda/0.1" } }), makeEnv() as any, ctx());
+    expect(r.status).toBe(403);
+  });
+
   it.each([["HEAD", "/"], ["GET", "/otra"], ["GET", "/mcp"], ["DELETE", "/"]])("%s %s -> 405 como antes", async (method, path) => {
     const r = await worker.fetch(get(path, method), makeEnv() as any, ctx());
     expect(r.status).toBe(405);
@@ -143,6 +155,25 @@ describe("POST /api/buscar", () => {
     await Promise.all(c.p);
     expect(env.AI.run).not.toHaveBeenCalled(); expect(env.DB.prepare).not.toHaveBeenCalled();
     expect(env.VECTORS.query).not.toHaveBeenCalled(); expect(env.LOGS.put).not.toHaveBeenCalled();
+  });
+
+  it.each([["sin cabecera", undefined], ["text/plain", "text/plain"], ["form", "application/x-www-form-urlencoded"], ["json-ish", "application/jsonx"]])(
+    "Content-Type %s -> 415 sin leer el cuerpo ni tocar backend", async (_n, ct) => {
+      const env = makeEnv(); const c = ctx();
+      const req = new Request("https://w.example/api/buscar", { method: "POST", body: JSON.stringify({ necesidad: "x" }) });
+      if (ct === undefined) req.headers.delete("content-type"); else req.headers.set("content-type", ct);
+      const r = await worker.fetch(req, env as any, c);
+      expect(r.status).toBe(415);
+      jsonHeaders(r);
+      expect(await r.json()).toEqual({ error: "Se requiere Content-Type: application/json." });
+      expect(req.bodyUsed).toBe(false);
+      await Promise.all(c.p);
+      expect(env.AI.run).not.toHaveBeenCalled(); expect(env.DB.prepare).not.toHaveBeenCalled(); expect(env.LOGS.put).not.toHaveBeenCalled();
+    });
+
+  it("Content-Type en mayúsculas y con charset se acepta", async () => {
+    const r = await worker.fetch(api(JSON.stringify({ necesidad: "x" }), "POST", { "content-type": "Application/JSON; charset=utf-8" }), makeEnv() as any, ctx());
+    expect(r.status).toBe(200);
   });
 
   it("necesidad de exactamente 2000 caracteres se acepta", async () => {

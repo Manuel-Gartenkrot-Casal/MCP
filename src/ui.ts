@@ -15,7 +15,7 @@ export function comando(nombre: string, url: string): string | null {
 const CSS = `
 :root {
   color-scheme: light dark;
-  --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede6; --ink: #17191d; --muted: #565b66; --line: #dcd9d0;
+  --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede6; --ink: #17191d; --muted: #565b66; --line: #dcd9d0; --control: #7d828c;
   --accent: #0b6e5f; --accent-hover: #095a4e; --accent-ink: #ffffff; --accent-soft: #e0f0eb;
   --danger: #a4262c; --danger-soft: #fbecec; --focus: #1a5fd0;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -24,7 +24,7 @@ const CSS = `
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111316; --surface: #181b20; --surface-2: #0d0f12; --ink: #ecebe6; --muted: #a3a8b2; --line: #2b3038;
+    --bg: #111316; --surface: #181b20; --surface-2: #0d0f12; --ink: #ecebe6; --muted: #a3a8b2; --line: #2b3038; --control: #737a86;
     --accent: #4fc4ac; --accent-hover: #6fd4bf; --accent-ink: #06201a; --accent-soft: #15302a;
     --danger: #ff9b9b; --danger-soft: #2c1818; --focus: #8ab4ff;
   }
@@ -56,11 +56,11 @@ form { margin: 28px 0 0; }
 .campo { display: grid; gap: 6px; }
 label { font-weight: 600; font-size: .9375rem; }
 .busca { display: flex; gap: 8px; }
-input, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-height: 48px; }
+input, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--control); border-radius: 10px; min-height: 48px; }
 input { flex: 1; min-width: 0; padding: 0 14px; }
 input::placeholder { color: var(--muted); opacity: 1; }
 select { width: 100%; padding: 0 10px; }
-input:hover, select:hover { border-color: var(--muted); }
+input:hover, select:hover { border-color: var(--ink); }
 .filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
 .filtros label { font-size: .8125rem; color: var(--muted); font-weight: 600; }
 
@@ -100,6 +100,7 @@ input:hover, select:hover { border-color: var(--muted); }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .badge { font-size: .75rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); }
 .badge-acc { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.nota { margin: -4px 0 0; font-size: .8125rem; color: var(--muted); }
 .card-id { margin: 0; font: .75rem/1.4 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 
 footer { margin: 56px 0 0; padding: 20px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: .875rem; }
@@ -124,6 +125,11 @@ const AUTHS = new Map([["ninguna", "Sin autenticación"], ["clave", "Requiere cl
 const $ = (id) => document.getElementById(id);
 const form = $("f"), q = $("q"), con = $("con"), au = $("auth"), go = $("go"), res = $("res"), aviso = $("aviso");
 
+// Single polite status line: cleared first so a repeated message ("Copiado") is announced again.
+function anunciar(msg) {
+  aviso.textContent = "";
+  setTimeout(() => { aviso.textContent = msg; }, 60);
+}
 function el(tag, cls, txt) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -133,7 +139,7 @@ function el(tag, cls, txt) {
 function conCopia(btn, get) {
   const label = btn.textContent;
   btn.addEventListener("click", () => {
-    const fin = (msg) => { btn.textContent = msg; aviso.textContent = msg; setTimeout(() => { btn.textContent = label; }, 1600); };
+    const fin = (msg) => { btn.textContent = msg; anunciar(msg); setTimeout(() => { btn.textContent = label; }, 1600); };
     if (!navigator.clipboard) return fin("No se pudo copiar");
     navigator.clipboard.writeText(get()).then(() => fin("Copiado"), () => fin("No se pudo copiar"));
   });
@@ -154,6 +160,7 @@ function estado(clase, titulo, texto) {
   box.append(el("p", "t", titulo));
   if (texto) box.append(el("p", "", texto));
   res.replaceChildren(box);
+  anunciar(titulo);
 }
 function puntaje(p) {
   const n = typeof p === "number" && isFinite(p) ? Math.max(0, Math.min(100, Math.round(p * 100))) : 0;
@@ -183,7 +190,9 @@ function tarjeta(r) {
   pre.append(el("code", "", conn));
   const cmd = r.tipo_conexion === "remoto" ? comando(nombre, conn) : null;
   fila.append(pre, cmd ? botonCopia("Copiar comando", cmd, nombre) : botonCopia("Copiar", conn, nombre));
-  li.append(fila, el("p", "card-id", "id: " + r.id));
+  li.append(fila);
+  if (!cmd) li.append(el("p", "nota", "Revisa el comando antes de ejecutarlo."));
+  li.append(el("p", "card-id", "id: " + r.id));
   return li;
 }
 
@@ -196,7 +205,6 @@ async function buscar() {
   if (au.value) body.auth = au.value;
   const mio = ++turno;
   go.disabled = true;
-  res.setAttribute("aria-busy", "true");
   estado("cargando", "Buscando…");
   let r = null, data = null;
   try {
@@ -205,7 +213,6 @@ async function buscar() {
   } catch (e) { r = null; }
   if (mio !== turno) return;
   go.disabled = false;
-  res.removeAttribute("aria-busy");
   if (!r) return estado("error", "No se pudo conectar.", "Revisa tu conexión e inténtalo de nuevo.");
   if (r.status === 429) return estado("error", "Demasiadas búsquedas, espera un minuto.", "Hay un límite por persona para que el servicio siga siendo gratuito.");
   if (r.status === 400 || r.status === 413) return estado("error", "Revisa la consulta.", data && typeof data.error === "string" ? data.error : "No se pudo procesar.");
@@ -218,6 +225,7 @@ async function buscar() {
   const ol = el("ol", "cards");
   for (const c of data.coincidencias) ol.append(tarjeta(c));
   res.replaceChildren(el("h2", "res-t", n === 1 ? "1 servidor, por relevancia" : n + " servidores, por relevancia"), ol);
+  anunciar(n === 1 ? "1 resultado" : n + " resultados");
 }
 
 form.addEventListener("submit", (e) => { e.preventDefault(); buscar(); });
@@ -290,14 +298,14 @@ export function renderPagina(nonce: string): string {
     <div class="ejemplos"><span>Prueba con:</span>${EJEMPLOS.map((e) => `<button type="button" class="chip" data-ejemplo>${e}</button>`).join("")}</div>
   </form>
 
-  <section id="res" aria-live="polite" aria-label="Resultados">
+  <section id="res" aria-label="Resultados">
     <div class="estado">
       <p class="t">Escribe una necesidad y pulsa Buscar.</p>
       <p>Verás hasta 10 servidores ordenados por relevancia, con cómo conectarlos y su <code>id</code> para usarlo con explorar y llamar.</p>
     </div>
     <noscript><p>La búsqueda necesita JavaScript.</p></noscript>
   </section>
-  <p id="aviso" class="sr" role="status"></p>
+  <p id="aviso" class="sr" role="status" aria-live="polite"></p>
 </main>
 
 <footer>

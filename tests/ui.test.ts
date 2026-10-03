@@ -38,7 +38,9 @@ describe("renderPagina", () => {
   it("controles etiquetados, región aria-live, ejemplos y sección 'Usar con tu IA'", () => {
     for (const id of ["q", "con", "auth"]) expect(html).toContain(`<label for="${id}"`);
     expect(html).toMatch(/maxlength="2000"/);
-    expect(html).toMatch(/aria-live="polite"/);
+    expect(html).toContain('<p id="aviso" class="sr" role="status" aria-live="polite"></p>');
+    expect(html.match(/aria-live/g)!.length).toBe(1); // solo el estado, no la lista de resultados
+    expect(html).toMatch(/<section id="res" aria-label="Resultados">/);
     expect(html).toContain("gestionar issues y pull requests de GitHub");
     expect(html).toContain("dar la hora actual");
     expect(html).toContain("leer hojas de cálculo de Google");
@@ -50,6 +52,13 @@ describe("renderPagina", () => {
   it("el script incrusta exactamente las funciones puras exportadas", () => {
     expect(script).toContain(slug.toString());
     expect(script).toContain(comando.toString());
+  });
+  it("aviso de revisar el comando junto a cada botón de copia de tarjeta", () => {
+    expect(script).toContain("Revisa el comando antes de ejecutarlo.");
+  });
+  it("los controles usan un borde propio más contrastado (claro y oscuro)", () => {
+    expect(html.match(/--control:\s*#[0-9a-f]{6}/g)!.length).toBe(2);
+    expect(html).toMatch(/input, select \{[^}]*border: 1px solid var\(--control\)/);
   });
   it("el script compila", () => {
     expect(() => new Script(script)).not.toThrow();

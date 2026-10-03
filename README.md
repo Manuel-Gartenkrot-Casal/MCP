@@ -7,7 +7,7 @@ Servidor MCP público, gratuito y de solo lectura, en Cloudflare Workers. Expone
 - `necesidad`: texto libre (máx. 2000 caracteres), en español o inglés.
 - `tipo_conexion`: `remoto` | `local`. `auth`: `ninguna` | `clave` | `oauth` | `desconocida` (`oauth` se acepta como filtro pero el catálogo nunca lo asigna, así que no devuelve resultados).
 
-También tiene una página web para buscar desde el navegador: https://catalogo-mcp-busqueda.manuelgartenkrotcasal.workers.dev/ (ver "Interfaz web").
+Incluye una página web de búsqueda, disponible en `/` del mismo Worker (ver "Interfaz web").
 
 ## Añadirlo a un cliente MCP
 
@@ -26,10 +26,11 @@ Otros clientes con Streamable HTTP (forma del JSON por verificar según el clien
 
 ## Interfaz web
 
-- `GET /` (solo esa ruta) devuelve una página autocontenida en español: caja de búsqueda, filtros de conexión y autenticación, ejemplos, resultados en tarjetas (nombre, función, tipo, autenticación, puntaje, conexión, `id`) con botón para copiar el comando `claude mcp add`, y el comando para añadir el servidor MCP a tu IA. Sin recursos externos; cabeceras `Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` (nonce aleatorio por petición), `nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. El texto del catálogo se inserta solo como texto (`textContent`), nunca como HTML ni como enlace. El botón "Copiar comando" solo aparece si la URL remota no contiene caracteres que una shell interprete (si no, solo se ofrece copiar la conexión).
+- Disponible en `/`: `GET /` (solo esa ruta) devuelve una página autocontenida en español: caja de búsqueda, filtros de conexión y autenticación, ejemplos, resultados en tarjetas (nombre, función, tipo, autenticación, puntaje, conexión, `id`) con botón para copiar el comando `claude mcp add`, y el comando para añadir el servidor MCP a tu IA. Sin recursos externos; cabeceras `Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` (nonce aleatorio por petición), `nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. El texto del catálogo se inserta solo como texto (`textContent`), nunca como HTML ni como enlace. El botón "Copiar comando" solo aparece si la URL remota no contiene caracteres que una shell interprete (si no, solo se ofrece copiar la conexión, con el aviso "Revisa el comando antes de ejecutarlo."). La página no pasa por el rate limit (es estática); las búsquedas sí.
 - `POST /api/buscar` (la usa la página; misma búsqueda, saneado y registro en R2 que la herramienta `buscar`):
   - Petición: `{ "necesidad": string (1..2000, no solo espacios), "tipo_conexion"?: "remoto"|"local", "auth"?: "ninguna"|"clave"|"oauth"|"desconocida" }`.
   - 200: `{ "coincidencias": [ { "id", "nombre", "funcion", "como_conectar", "tipo_conexion", "auth", "puntaje" } ], "mensaje"?: "sin coincidencias fiables" }`. Los textos ya vienen saneados (`<` y `>` sustituidos por ‹ ›), sin delimitadores `<dato>`.
+  - Requiere `Content-Type: application/json` (con o sin `charset`); si falta o es otro, 415 sin leer el cuerpo. Así una web ajena no puede enviar la búsqueda con un formulario simple: necesitaría preflight CORS, que falla.
   - Errores `{ "error": "..." }`: 400 (JSON inválido, cuerpo que no es un objeto, incluidos los arrays/lotes, campos inválidos), 413 (cuerpo > 16 KB), 405 (método distinto de `POST`, con `Allow: POST`), 429 (límite global de 30/min por IP, compartido con MCP), 500 (`"Error interno."`, sin detalles).
   - Solo mismo origen: no envía cabeceras CORS (`Access-Control-*`), así que otras webs no pueden leer las respuestas desde el navegador.
 

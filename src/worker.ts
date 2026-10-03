@@ -126,6 +126,8 @@ const AUTHS = ["ninguna", "clave", "oauth", "desconocida"];
 
 async function apiBuscar(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   if (req.method !== "POST") return apiErr(405, NO_POST, { Allow: "POST" });
+  // Forces a CORS preflight for cross-site callers (which then fails: no CORS headers), so forms can't spend tokens.
+  if (!/^application\/json\s*(;|$)/i.test(req.headers.get("content-type") ?? "")) return apiErr(415, "Se requiere Content-Type: application/json.");
   const body = await readCapped(req);
   if (!body) return apiErr(413, GRANDE);
   let d: any;
@@ -161,6 +163,9 @@ function pagina(): Response {
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (req.headers.get("user-agent")?.startsWith(UA_PREFIJO)) return err(403, "Petición recursiva rechazada.");
+    const path = new URL(req.url).pathname;
+    // Static page, no backend: served before the limiter so a limited visitor still sees it (the API then says 429).
+    if (req.method === "GET" && path === "/") return pagina();
     let success = true;
     const ip = req.headers.get("CF-Connecting-IP") ?? "anon";
     try {
@@ -168,11 +173,9 @@ export default {
     } catch {
       // fail open: a limiter outage must not take the service down
     }
-    const path = new URL(req.url).pathname;
     const esApi = path === "/api/buscar";
     if (!success) return esApi ? apiErr(429, LIMITE) : err(429, LIMITE);
     if (esApi) return apiBuscar(req, env, ctx);
-    if (req.method === "GET" && path === "/") return pagina();
     if (req.method !== "POST") return err(405, NO_POST, { Allow: "POST" });
     const body = await readCapped(req);
     if (!body) return err(413, GRANDE);
