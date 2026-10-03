@@ -2,6 +2,9 @@ name = "catalogo-mcp-busqueda"
 main = "src/worker.ts"
 compatibility_date = "2026-10-01"
 
+[vars]
+GATEWAY_ENABLED = "1"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "catalogo-mcp"
@@ -25,3 +28,27 @@ namespace_id = "48291"
   [ratelimits.simple]
   limit = 30
   period = 60
+
+[[ratelimits]]
+name = "LIMITER_EXPLORAR"
+namespace_id = "48292"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "LIMITER_LLAMAR"
+namespace_id = "48293"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[durable_objects.bindings]]
+name = "SESIONES"
+class_name = "SesionDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SesionDO"]
