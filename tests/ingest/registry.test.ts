@@ -90,6 +90,16 @@ describe("normalizeEntry", () => {
     raw.server.packages = [{ registryType: "oci", identifier: "ghcr.io/o/img:1.2" }];
     expect(normalizeEntry(raw)!.como_conectar).toBe("docker run -i --rm ghcr.io/o/img:1.2");
   });
+  it("status deleted => null; active, deprecated o sin status se conservan", () => {
+    const K = "io.modelcontextprotocol.registry/official";
+    const withStatus = (st?: string) => {
+      const raw = structuredClone(by("agency.kesey/pretrip"));
+      if (st === undefined) delete raw._meta[K].status; else raw._meta[K].status = st;
+      return normalizeEntry(raw);
+    };
+    expect(withStatus("deleted")).toBeNull();
+    for (const st of ["active", "deprecated", undefined]) expect(withStatus(st), String(st)).not.toBeNull();
+  });
   it("sin conexión => null", () => {
     expect(normalizeEntry(by("ai.agentxray/amazon-seller-mcp"))).toBeNull();
   });

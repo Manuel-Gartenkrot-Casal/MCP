@@ -29,6 +29,7 @@ export function normalizeEntry(raw: unknown): Entry | null {
   const id = str(s?.name);
   if (!id) return null;
   const meta = (raw as any)._meta?.["io.modelcontextprotocol.registry/official"];
+  if (meta?.status === "deleted") return null;
 
   const remotes = arr(s.remotes).filter((r) => str(r?.url));
   const remote = remotes.find((r) => r.type === "streamable-http") ?? remotes[0];
