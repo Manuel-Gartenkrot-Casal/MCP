@@ -1,0 +1,44 @@
+name: experimento
+on:
+  push:
+    tags:
+      - "experimento-*"
+  workflow_dispatch:
+# write access is used ONLY by the publish step (automatic GITHUB_TOKEN, push of the `resultados` branch)
+permissions:
+  contents: write
+concurrency:
+  group: experimento
+  cancel-in-progress: false
+jobs:
+  experimento:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Run experiment
+        run: npx tsx scripts/experimento-embeddings.ts
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      - name: Job summary
+        run: cat resultados/*.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish results branch
+        run: |
+          out="$RUNNER_TEMP/resultados"
+          mkdir -p "$out"
+          cp resultados/* "$out"/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan resultados-tmp
+          git rm -rf --quiet .
+          git clean -ffdx --quiet
+          mkdir resultados
+          cp "$out"/* resultados/
+          git add resultados
+          git commit -m "experimento: resultados de $GITHUB_RUN_ID"
+          git push --force origin HEAD:resultados
