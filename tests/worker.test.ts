@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import worker from "../src/worker";
+import { EMBED_DIMS } from "../src/embedding";
 
 const row = (o: any = {}) => ({
   id: "a", nombre: "Alfa", descripcion: "hace cosas", url_info: null, tipo_conexion: "remoto",
@@ -9,7 +10,7 @@ const row = (o: any = {}) => ({
 function makeEnv(o: { rows?: any[]; limited?: boolean; putFails?: boolean; matches?: any[] } = {}) {
   const rows = o.rows ?? [row()];
   const env = {
-    AI: { run: vi.fn(async () => ({ data: [new Array(1024).fill(0.1)] })) },
+    AI: { run: vi.fn(async () => ({ data: [new Array(768).fill(0.1)] })) },
     VECTORS: { query: vi.fn(async () => ({ matches: o.matches ?? [{ id: "a", score: 0.9 }] })) },
     DB: {
       prepare: vi.fn((_sql: string) => ({
@@ -64,7 +65,7 @@ describe("worker MCP", () => {
     await Promise.all(c.p);
     expect(env.LOGS.put).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(env.LOGS.put.mock.calls)).not.toContain("9.9.9.9");
-    expect(env.AI.run).toHaveBeenCalledWith("@cf/baai/bge-m3", { text: ["algo"] });
+    expect(env.AI.run).toHaveBeenCalledWith("@cf/google/embeddinggemma-300m", { text: ["algo"] });
     expect(env.DB.prepare.mock.calls[0][0]).toContain("FROM entradas WHERE id IN (?");
   });
 
@@ -79,6 +80,25 @@ describe("worker MCP", () => {
     const r = await json(await worker.fetch(call({ necesidad: "   " }), env as any, ctx()));
     expect(r.result.isError).toBe(true);
     expect(r.result.content[0].text).toContain("necesidad vacía");
+  });
+
+  it("vector enviado a Vectorize: EMBED_DIMS dimensiones y norma 1", async () => {
+    const env = makeEnv();
+    env.AI.run.mockResolvedValue({ data: [Array.from({ length: 768 }, (_, i) => (i % 7) - 3 + 0.5)] });
+    await worker.fetch(call({ necesidad: "algo" }), env as any, ctx());
+    const v = (env.VECTORS.query.mock.calls[0] as any[])[0] as number[];
+    expect(v).toHaveLength(EMBED_DIMS);
+    expect(Math.hypot(...v)).toBeCloseTo(1, 6);
+  });
+
+  it("respuesta de embedding malformada (1024 dims de bge-m3, vacía) -> error interno sin consultar Vectorize", async () => {
+    for (const bad of [{ data: [new Array(1024).fill(0.1)] }, { data: [] }, {}]) {
+      const env = makeEnv(); env.AI.run.mockResolvedValue(bad as any);
+      const r = await json(await worker.fetch(call({ necesidad: "x" }), env as any, ctx()));
+      expect(r.result.isError).toBe(true);
+      expect(r.result.content[0].text).toBe("error interno");
+      expect(env.VECTORS.query).not.toHaveBeenCalled();
+    }
   });
 
   it("error interno no filtra detalles", async () => {
@@ -203,6 +223,6 @@ describe("worker MCP", () => {
     const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));
     const t: string = r.result.content[0].text;
     expect(t.indexOf("Alfa")).toBeLessThan(t.indexOf("Beta"));
-    expect(env.AI.run.mock.calls.map((c: any[]) => c[0])).toEqual(["@cf/baai/bge-m3"]);
+    expect(env.AI.run.mock.calls.map((c: any[]) => c[0])).toEqual(["@cf/google/embeddinggemma-300m"]);
   });
 });

@@ -1,4 +1,5 @@
 import type { Entry } from "../types";
+import { EMBED_MODEL, reducir } from "../embedding";
 
 export function needsEmbedding(existingActualizado: string | undefined, entry: Entry): boolean {
   return existingActualizado === undefined || existingActualizado !== entry.actualizado;
@@ -94,13 +95,11 @@ ON CONFLICT(id) DO UPDATE SET nombre = excluded.nombre, descripcion = excluded.d
 }
 
 // ---- Workers AI + Vectorize REST clients ----
-// Docs: https://developers.cloudflare.com/workers-ai/models/bge-m3/ (POST /accounts/{id}/ai/run/@cf/baai/bge-m3, body {"text": [...]})
+// Docs: https://developers.cloudflare.com/workers-ai/models/embeddinggemma-300m/ (POST /accounts/{id}/ai/run/{EMBED_MODEL},
+//       body {"text": [...]}, result.data = one 768-dim vector per input; shape proven by the embedding experiment)
 //       https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/methods/upsert/
 //       (POST /accounts/{id}/vectorize/v2/indexes/{name}/upsert, application/x-ndjson, one {id, values} per line)
-// 1024 is the BAAI model-card figure; NOT verified in Cloudflare docs. The first real run confirms it
-// (embed throws on mismatch). The Vectorize index must be created with the same dimension.
-export const EMBEDDING_DIMS = 1024;
-
+// The Vectorize index must be created with EMBED_DIMS dimensions.
 const API = "https://api.cloudflare.com/client/v4/accounts";
 
 async function cfCall(res: Response, what: string): Promise<any> {
@@ -112,14 +111,14 @@ async function cfCall(res: Response, what: string): Promise<any> {
   return body;
 }
 
-// One call embeds every text; result.data must be number[][] with one vector per input, else throw.
+// One call embeds every text; result.data must hold one vector per input, each reduced to EMBED_DIMS (else throw).
 export function embedWorkersAI(
   cfg: { accountId: string; token: string },
   fetchFn: typeof fetch = fetch,
   sleep: Sleep = wait,
 ): (texts: string[]) => Promise<number[][]> {
   return async (texts) => {
-    const res = await fetchRetry(fetchFn, `${API}/${cfg.accountId}/ai/run/@cf/baai/bge-m3`, {
+    const res = await fetchRetry(fetchFn, `${API}/${cfg.accountId}/ai/run/${EMBED_MODEL}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ text: texts }),
@@ -129,17 +128,12 @@ export function embedWorkersAI(
     if (!Array.isArray(data) || data.length !== texts.length) {
       throw new Error(`Workers AI embed: expected ${texts.length} vectors, got ${Array.isArray(data) ? data.length : "no vectors"}`);
     }
-    for (const vec of data) {
-      if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIMS) {
-        throw new Error(`Workers AI embed: expected ${EMBEDDING_DIMS} dims, got ${Array.isArray(vec) ? vec.length : "no vector"}`);
-      }
-    }
-    return data;
+    return data.map(reducir);
   };
 }
 
 // One request, one NDJSON line per vector (HTTP API batch limit 5,000 vectors / 100 MB,
-// https://developers.cloudflare.com/vectorize/platform/limits/); runIngest sends <= 50.
+// https://developers.cloudflare.com/vectorize/platform/limits/); runIngest sends <= 25.
 export function vectorizeUpsert(
   cfg: { accountId: string; index: string; token: string },
   fetchFn: typeof fetch = fetch,

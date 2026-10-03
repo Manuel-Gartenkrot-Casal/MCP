@@ -1,14 +1,7 @@
 import type { Case } from "../../eval/evaluate";
+import { QUOTA_DIMS } from "../embedding";
 
-// First d components, then L2-normalise (zero vector stays zero, never NaN).
-export function truncateNormalize(v: ArrayLike<number>, d: number): Float32Array {
-  const out = new Float32Array(d);
-  let n = 0;
-  for (let i = 0; i < d; i++) { out[i] = v[i]; n += out[i] * out[i]; }
-  n = Math.sqrt(n);
-  if (n > 0) for (let i = 0; i < d; i++) out[i] /= n;
-  return out;
-}
+export { truncateNormalize } from "../embedding";
 
 // Inputs are unit vectors, so cosine == dot product.
 export function cosineScores(q: Float32Array, docs: Float32Array[]): Float32Array {
@@ -50,7 +43,7 @@ export function cuantil(xs: number[], p: number): number {
 
 // Free Vectorize quota: 5,000,000 stored dimensions.
 export function capacidad(dim: number, elegibles: number): { vectores: number; cobertura: number } {
-  const vectores = Math.floor(5_000_000 / dim);
+  const vectores = Math.floor(QUOTA_DIMS / dim);
   return { vectores, cobertura: elegibles ? Math.min(1, vectores / elegibles) : 0 };
 }
 

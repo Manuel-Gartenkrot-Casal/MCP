@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { runIngest, rankEntries, exitCodeFor, type IngestDeps } from "../../src/ingest/run";
-import { embedWorkersAI, EMBEDDING_DIMS } from "../../src/ingest/cloudflare";
+import { embedWorkersAI } from "../../src/ingest/cloudflare";
 import type { Entry } from "../../src/types";
 
 const mk = (id: string, o: Partial<Entry> = {}): Entry => ({
@@ -71,26 +71,28 @@ describe("runIngest", () => {
     expect(f.rows.size).toBe(0);
     expect(f.vectors).toHaveLength(0);
   });
-  it("lotes de 50: 120 entradas => embed y upsert en 50, 50, 20", async () => {
-    const f = fake(many(120));
+  it("lotes de 25: 60 entradas => embed y upsert en 25, 25, 10", async () => {
+    const f = fake(many(60));
     const r = await runIngest(f.deps);
-    expect(r.nuevas).toBe(120);
-    expect(f.embedCalls).toEqual([50, 50, 20]);
-    expect(f.upsertCalls).toEqual([50, 50, 20]);
+    expect(r.nuevas).toBe(60);
+    expect(f.embedCalls).toEqual([25, 25, 10]);
+    expect(f.upsertCalls).toEqual([25, 25, 10]);
   });
-  it("lote que falla => sus 50 son fallidas, los demás lotes siguen, rerun reintenta", async () => {
+  it("lote que falla => sus 25 son fallidas, los demás lotes siguen, rerun reintenta", async () => {
     let fail = true;
     const f = fake(many(120));
     const ok = f.deps.embedBatch;
-    f.deps.embedBatch = async (ts) => { if (fail && ts.includes("Ne075\nDe075")) throw new Error("x"); return ok(ts); };
+    f.deps.embedBatch = async (ts) => { if (fail && ts.includes("Ne060\nDe060")) throw new Error("x"); return ok(ts); };
     const r = await runIngest(f.deps);
-    expect(r).toMatchObject({ nuevas: 70, fallidas: 50 });
-    expect(f.rows.has("e075")).toBe(false);
+    expect(r).toMatchObject({ nuevas: 95, fallidas: 25 });
+    expect(f.rows.has("e060")).toBe(false);
     expect(f.rows.has("e050")).toBe(false);
-    expect(f.rows.has("e100")).toBe(true);
+    expect(f.rows.has("e074")).toBe(false);
+    expect(f.rows.has("e049")).toBe(true);
+    expect(f.rows.has("e075")).toBe(true);
     fail = false;
     const r2 = await runIngest(f.deps);
-    expect(r2).toMatchObject({ nuevas: 50, omitidas: 70, fallidas: 0 });
+    expect(r2).toMatchObject({ nuevas: 25, omitidas: 95, fallidas: 0 });
     expect(f.rows.size).toBe(120);
   });
   it("upsertVectors falla => no se guardan las filas", async () => {
@@ -100,11 +102,11 @@ describe("runIngest", () => {
     expect(f.rows.size).toBe(0);
   });
   it("upsertEntries falla en un lote => ese lote fallido, el siguiente sigue", async () => {
-    const f = fake(many(60));
+    const f = fake(many(35));
     const up = f.deps.store.upsertEntries;
-    f.deps.store.upsertEntries = async (es) => { if (es.length === 50) throw new Error("d1"); return up(es); };
+    f.deps.store.upsertEntries = async (es) => { if (es.length === 25) throw new Error("d1"); return up(es); };
     const r = await runIngest(f.deps);
-    expect(r).toMatchObject({ nuevas: 10, fallidas: 50 });
+    expect(r).toMatchObject({ nuevas: 10, fallidas: 25 });
   });
   it("reintentos agotados (429 siempre) => el lote cuenta como fallidas sin filtrar el token", async () => {
     const logs: string[] = [];
@@ -118,7 +120,6 @@ describe("runIngest", () => {
     expect(f.rows.size).toBe(0);
     expect(logs.join("\n")).toContain("429");
     expect(logs.join("\n")).not.toContain("SECRET-TOKEN-123");
-    expect(EMBEDDING_DIMS).toBe(1024);
   });
   it("excluye ids de más de 64 bytes UTF-8 (cuenta bytes, no caracteres) y lo registra", async () => {
     const logs: string[] = [];

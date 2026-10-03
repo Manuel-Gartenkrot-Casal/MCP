@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import worker from "../src/worker";
+import { EMBED_DIMS } from "../src/embedding";
 
 const row = (o: any = {}) => ({
   id: "a", nombre: "Alfa", descripcion: "hace cosas", url_info: null, tipo_conexion: "remoto",
@@ -9,7 +10,7 @@ const row = (o: any = {}) => ({
 function makeEnv(o: { rows?: any[]; limited?: boolean; matches?: any[] } = {}) {
   const rows = o.rows ?? [row()];
   return {
-    AI: { run: vi.fn(async () => ({ data: [new Array(1024).fill(0.1)] })) },
+    AI: { run: vi.fn(async () => ({ data: [new Array(768).fill(0.1)] })) },
     VECTORS: { query: vi.fn(async () => ({ matches: o.matches ?? [{ id: "a", score: 0.9 }] })) },
     DB: {
       prepare: vi.fn((_sql: string) => ({
@@ -211,6 +212,14 @@ describe("POST /api/buscar", () => {
   it("limitador que lanza -> fail open", async () => {
     const env = makeEnv(); env.LIMITER.limit.mockRejectedValue(new Error("down"));
     expect((await worker.fetch(post({ necesidad: "x" }), env as any, ctx())).status).toBe(200);
+  });
+
+  it("la API envía a Vectorize un vector de EMBED_DIMS dimensiones y norma 1", async () => {
+    const env = makeEnv();
+    expect((await worker.fetch(post({ necesidad: "x" }), env as any, ctx())).status).toBe(200);
+    const v = (env.VECTORS.query.mock.calls[0] as any[])[0] as number[];
+    expect(v).toHaveLength(EMBED_DIMS);
+    expect(Math.hypot(...v)).toBeCloseTo(1, 6);
   });
 
   it("fallo de buscar -> 500 sin texto de la excepción", async () => {

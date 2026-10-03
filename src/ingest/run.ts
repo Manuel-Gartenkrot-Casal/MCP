@@ -3,13 +3,13 @@ import { fetchRegistry } from "./registry";
 import {
   needsEmbedding, d1RestStore, embedWorkersAI, vectorizeUpsert, vectorizeDelete, type CatalogStore,
 } from "./cloudflare";
+import { MAX_VECTORS } from "../embedding";
 
-// Vectorize Free holds ~4,880 vectors at 1024 dims; leave headroom.
-export const MAX_VECTORS = 4500;
 const MAX_ID_BYTES = 64;
-// Entries per batch: one Workers AI call, one Vectorize upsert, ceil(50/11) D1 inserts.
-// ~4,500 entries => ~630 REST calls on a first run, under Cloudflare's 1,200 / 5 min.
-const BATCH = 50;
+// Entries per batch: one Workers AI call, one Vectorize upsert, ceil(25/11) = 3 D1 inserts.
+// 25 is the batch the embedding experiment ran with. A full (re)index of ~38k entries is ~7,700 REST
+// calls; Cloudflare allows 1,200 / 5 min per user, so 429s are expected and fetchRetry waits them out.
+const BATCH = 25;
 
 export interface IngestDeps {
   fetchEntries(): Promise<Entry[]>;

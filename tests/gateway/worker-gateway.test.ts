@@ -40,7 +40,7 @@ function makeEnv(o: { rows?: any[]; gateway?: string | undefined; limitExplorar?
     fetchCalls, idFromName, get,
     GATEWAY_ENABLED: "gateway" in o ? o.gateway : "1",
     ...(o.bloqueados !== undefined && { GATEWAY_BLOQUEADOS: o.bloqueados }),
-    AI: { run: vi.fn(async () => ({ data: [new Array(1024).fill(0.1)] })) },
+    AI: { run: vi.fn(async () => ({ data: [new Array(768).fill(0.1)] })) },
     VECTORS: { query: vi.fn(async () => ({ matches: [{ id: "a", score: 0.9 }] })) },
     DB: { prepare: vi.fn((_s: string) => ({ bind: (...ids: string[]) => {
       const f = rows.filter((r) => ids.includes(r.id));

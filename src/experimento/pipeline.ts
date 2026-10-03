@@ -1,8 +1,9 @@
 import type { Entry } from "../types";
 import type { Case } from "../../eval/evaluate";
 import { fetchRetry } from "../ingest/cloudflare";
-import { rankEntries, MAX_VECTORS } from "../ingest/run";
-import { truncateNormalize, evaluar, renderMarkdown, type Reporte } from "./metricas";
+import { rankEntries } from "../ingest/run";
+import { truncateNormalize, EMBED_MODEL, EMBED_NATIVE_DIMS } from "../embedding";
+import { evaluar, renderMarkdown, type Reporte } from "./metricas";
 
 type Sleep = (ms: number) => Promise<void>;
 const API = "https://api.cloudflare.com/client/v4/accounts";
@@ -17,16 +18,19 @@ export interface Config {
 export const CONFIGS: Config[] = [
   { nombre: "bge-m3", modelo: "@cf/baai/bge-m3", dimsNativas: 1024, batch: 50, dims: [1024],
     doc: (e) => `${e.nombre}\n${e.descripcion}`, query: (q) => q },
-  { nombre: "gemma-plain", modelo: "@cf/google/embeddinggemma-300m", dimsNativas: 768, batch: 25, dims: [768, 512, 256, 192, 128],
+  { nombre: "gemma-plain", modelo: EMBED_MODEL, dimsNativas: EMBED_NATIVE_DIMS, batch: 25, dims: [768, 512, 256, 192, 128],
     doc: (e) => `${e.nombre}\n${e.descripcion}`, query: (q) => q },
-  { nombre: "gemma-prompt", modelo: "@cf/google/embeddinggemma-300m", dimsNativas: 768, batch: 25, dims: [768, 512, 256, 192, 128],
+  { nombre: "gemma-prompt", modelo: EMBED_MODEL, dimsNativas: EMBED_NATIVE_DIMS, batch: 25, dims: [768, 512, 256, 192, 128],
     doc: (e) => `title: ${e.nombre} | text: ${e.descripcion}`, query: (q) => `task: search result | query: ${q}` },
 ];
 
 export type Modo = "top" | "todos";
 
-// Same eligibility as the ingest (ids over 64 bytes dropped); "top" keeps what production indexes.
-export function seleccionarDocs(all: Entry[], modo: Modo, max = MAX_VECTORS): Entry[] {
+// "top" = the 4,500 entries production indexed with bge-m3 (kept fixed so runs stay comparable to experiment 1).
+const TOP_EXPERIMENTO = 4500;
+
+// Same eligibility as the ingest (ids over 64 bytes dropped).
+export function seleccionarDocs(all: Entry[], modo: Modo, max = TOP_EXPERIMENTO): Entry[] {
   const enc = new TextEncoder();
   const ok = all.filter((e) => enc.encode(e.id).length <= 64);
   return modo === "todos" ? ok : rankEntries(ok).slice(0, max);

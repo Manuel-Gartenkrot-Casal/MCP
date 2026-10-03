@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { embedWorkersAI, vectorizeUpsert, EMBEDDING_DIMS } from "../../src/ingest/cloudflare";
+import { embedWorkersAI, vectorizeUpsert } from "../../src/ingest/cloudflare";
+import { EMBED_DIMS, EMBED_NATIVE_DIMS } from "../../src/embedding";
 
 const TOKEN = "SECRET-TOKEN-123";
 const json = (b: unknown, status = 200, headers?: HeadersInit) => new Response(JSON.stringify(b), { status, headers });
@@ -16,20 +17,23 @@ function seq(...rs: (() => Response)[]) {
 }
 
 describe("embedWorkersAI", () => {
-  const vec = Array(EMBEDDING_DIMS).fill(0.5);
-  it("URL, auth, body en lote y un vector por texto", async () => {
-    const s = spy(() => json({ success: true, result: { shape: [2, EMBEDDING_DIMS], data: [vec, vec] } }));
+  const vec = Array(EMBED_NATIVE_DIMS).fill(0.5);
+  it("URL, auth, body en lote y un vector reducido (EMBED_DIMS, norma 1) por texto", async () => {
+    const s = spy(() => json({ success: true, result: { shape: [2, EMBED_NATIVE_DIMS], data: [vec, vec] } }));
     const out = await embedWorkersAI({ accountId: "acc", token: TOKEN }, s.f, noSleep)(["hola", "adiós"]);
     expect(out).toHaveLength(2);
-    expect(out[1]).toHaveLength(EMBEDDING_DIMS);
+    expect(out[1]).toHaveLength(EMBED_DIMS);
+    expect(Math.hypot(...out[1])).toBeCloseTo(1, 6);
     expect(s.calls).toHaveLength(1);
-    expect(s.calls[0].url).toBe("https://api.cloudflare.com/client/v4/accounts/acc/ai/run/@cf/baai/bge-m3");
+    expect(s.calls[0].url).toBe("https://api.cloudflare.com/client/v4/accounts/acc/ai/run/@cf/google/embeddinggemma-300m");
     expect(s.calls[0].init.headers.Authorization).toBe(`Bearer ${TOKEN}`);
     expect(JSON.parse(s.calls[0].init.body)).toEqual({ text: ["hola", "adiós"] });
   });
-  it("dimension distinta en cualquier vector => lanza", async () => {
+  it("dimension distinta en cualquier vector (p. ej. 1024 de bge-m3) => lanza", async () => {
     const s = spy(() => json({ success: true, result: { data: [vec, [1, 2, 3]] } }));
-    await expect(embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, noSleep)(["x", "y"])).rejects.toThrow(/1024/);
+    await expect(embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, noSleep)(["x", "y"])).rejects.toThrow(/768/);
+    const s2 = spy(() => json({ success: true, result: { data: [Array(1024).fill(0.5)] } }));
+    await expect(embedWorkersAI({ accountId: "a", token: TOKEN }, s2.f, noSleep)(["x"])).rejects.toThrow(/768/);
   });
   it("número de vectores distinto al de textos => lanza", async () => {
     const s = spy(() => json({ success: true, result: { data: [vec] } }));
@@ -48,7 +52,7 @@ describe("embedWorkersAI", () => {
 });
 
 describe("reintentos (429 / 5xx)", () => {
-  const vec = Array(EMBEDDING_DIMS).fill(0.5);
+  const vec = Array(EMBED_NATIVE_DIMS).fill(0.5);
   const okEmbed = () => json({ success: true, result: { data: [vec] } });
   it("429 y luego éxito: reintenta con backoff exponencial", async () => {
     const sleeps: number[] = [];

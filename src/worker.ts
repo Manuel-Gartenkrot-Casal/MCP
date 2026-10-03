@@ -8,22 +8,18 @@ import { logBusqueda } from "./log";
 import { registerGateway, type GwEnv } from "./gateway/tools";
 import { UA_PREFIJO } from "./gateway/cliente";
 import { renderPagina } from "./ui";
+import { EMBED_MODEL, reducir } from "./embedding";
 import type { Entry } from "./types";
 
 export { SesionDO } from "./gateway/sesion";
 
 interface Env extends GwEnv { VECTORS: VectorizeIndex; AI: Ai; LIMITER: RateLimit }
 
-// Duplicated from src/ingest/cloudflare.ts (EMBEDDING_DIMS) to keep that Node-oriented module out of the Worker bundle.
-const DIMS = 1024;
-
 function realDeps(env: Env): SearchDeps {
   return {
     async embed(t) {
-      const r: any = await env.AI.run("@cf/baai/bge-m3" as any, { text: [t] });
-      const v = r?.data?.[0];
-      if (!Array.isArray(v) || v.length !== DIMS) throw new Error("embedding dims");
-      return v;
+      const r: any = await env.AI.run(EMBED_MODEL as any, { text: [t] });
+      return reducir(r?.data?.[0]); // malformed => throws => "error interno"
     },
     async nearest(v, topK) {
       const r = await env.VECTORS.query(v, { topK });
