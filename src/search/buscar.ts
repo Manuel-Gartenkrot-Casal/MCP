@@ -10,11 +10,17 @@ export interface SearchDeps {
   embed(t: string): Promise<number[]>;
   nearest(v: number[], n: number): Promise<{ id: string; score: number }[]>;
   getEntries(ids: string[]): Promise<Entry[]>;
+  // One score in [0,1] per text, same order. Optional: without it (or if it fails) the vector order is used.
+  rerank?(query: string, textos: string[]): Promise<number[]>;
 }
 export class InputError extends Error {}
 
 const CONEXIONES = ["remoto", "local"];
 const AUTHS = ["ninguna", "clave", "oauth", "desconocida"];
+export const UMBRAL_VECTOR = 0.5;
+export const UMBRAL_RERANK = 0.5; // provisional: calibrate with `npm run eval`
+// Set to false to disable the reranker (e.g. if the eval shows Spanish regressing); rerank is then never called.
+const RERANK_ENABLED = true;
 const SIN = { coincidencias: [] as Resultado[], mensaje: "sin coincidencias fiables" };
 
 export async function buscar(
@@ -25,7 +31,7 @@ export async function buscar(
 ): Promise<{ coincidencias: Resultado[]; mensaje?: string }> {
   // Filters run after the vector query; with a filter, fetch Vectorize's max topK (100 without
   // values/metadata) so filtered-out neighbours don't starve the results. 100 ids = D1's 100-param cap.
-  const { n = filtros.tipo_conexion || filtros.auth ? 100 : 20, max = 10, umbral = 0.5 } = opts;
+  const { n = filtros.tipo_conexion || filtros.auth ? 100 : 50, max = 10 } = opts;
   const q = (necesidad ?? "").trim().slice(0, 1000);
   if (!q) throw new InputError("necesidad vacía");
   if (filtros.tipo_conexion !== undefined && !CONEXIONES.includes(filtros.tipo_conexion))
@@ -47,6 +53,24 @@ export async function buscar(
       tipo_conexion: e.tipo_conexion, auth: e.auth, puntaje: h.score,
     });
   }
-  if (!out.length || out[0].puntaje < umbral) return { ...SIN };
-  return { coincidencias: out.slice(0, max) };
+  let umbral = opts.umbral ?? UMBRAL_VECTOR;
+  let lista = out;
+  const scores = out.length ? await rerankear(deps, q, out) : null;
+  if (scores) {
+    umbral = opts.umbral ?? UMBRAL_RERANK;
+    lista = out.map((r, i) => ({ ...r, puntaje: scores[i] })).sort((a, b) => b.puntaje - a.puntaje);
+  }
+  if (!lista.length || lista[0].puntaje < umbral) return { ...SIN };
+  return { coincidencias: lista.slice(0, max) };
+}
+
+// Scores for `out` (already sanitized, same text the user sees), or null => fall back to vector order. Never throws.
+async function rerankear(deps: SearchDeps, q: string, out: Resultado[]): Promise<number[] | null> {
+  if (!RERANK_ENABLED || !deps.rerank) return null;
+  try {
+    const s = await deps.rerank(q, out.map((r) => r.nombre + "\n" + r.funcion));
+    return Array.isArray(s) && s.length === out.length && s.every((x) => typeof x === "number" && Number.isFinite(x)) ? s : null;
+  } catch {
+    return null;
+  }
 }

@@ -143,4 +143,40 @@ describe("worker MCP", () => {
     expect(t.match(/<\/dato>/g)!.length).toBe(3);
     expect(t).toContain("\u2039/dato\u203A");
   });
+
+  describe("rerank vía env.AI", () => {
+    const two = [row(), row({ id: "b", nombre: "Beta" })];
+    const matches = [{ id: "a", score: 0.9 }, { id: "b", score: 0.8 }];
+    const withAI = (rerank: (m: string, i: any) => any) => {
+      const env = makeEnv({ rows: two, matches });
+      env.AI.run = vi.fn(async (m: string, i: any) => (m === "@cf/baai/bge-m3" ? { data: [new Array(1024).fill(0.1)] } : rerank(m, i))) as any;
+      return env;
+    };
+    const names = (r: any) => [...r.result.content[0].text.matchAll(/<dato>(Alfa|Beta)<\/dato>/g)].map((m) => m[1]);
+
+    it("un rerank correcto cambia el orden y envía query y contexts sanitizados", async () => {
+      const env = withAI(() => [{ id: 0, score: -2 }, { id: 1, score: 3 }]);
+      const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));
+      expect(names(r)).toEqual(["Beta", "Alfa"]);
+      const [m, input] = env.AI.run.mock.calls[1] as any;
+      expect(m).toBe("@cf/baai/bge-reranker-base");
+      expect(input).toEqual({ query: "algo", contexts: [{ text: "Alfa\nhace cosas" }, { text: "Beta\nhace cosas" }] });
+      expect(r.result.content[0].text).toContain("puntaje: 0.953");
+    });
+    it("acepta la forma envuelta { response }", async () => {
+      const env = withAI(() => ({ response: [{ id: 1, score: 1 }, { id: 0, score: 2 }] }));
+      expect(names(await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx())))).toEqual(["Alfa", "Beta"]);
+    });
+    it.each([
+      ["rechaza", () => { throw new Error("secret ai down"); }],
+      ["forma inválida", () => ({ nope: true })],
+      ["ids duplicados", () => [{ id: 0, score: 1 }, { id: 0, score: 2 }]],
+    ])("rerank que %s -> respuesta normal en orden vectorial", async (_n, f) => {
+      const env = withAI(f as any);
+      const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));
+      expect(r.result.isError).toBeFalsy();
+      expect(names(r)).toEqual(["Alfa", "Beta"]);
+      expect(r.result.content[0].text).not.toContain("secret");
+    });
+  });
 });

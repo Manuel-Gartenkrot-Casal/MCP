@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { buscar, InputError, type SearchDeps } from "../../src/search/buscar";
+import { buscar, InputError, UMBRAL_RERANK, UMBRAL_VECTOR, type SearchDeps } from "../../src/search/buscar";
 import type { Entry } from "../../src/types";
 
 const entry = (id: string, o: Partial<Entry> = {}): Entry => ({
@@ -41,7 +41,7 @@ describe("buscar", () => {
     expect(d.nearest.mock.calls[0][1]).toBe(100);
     expect(r.coincidencias.map((c) => c.nombre)).toEqual(["e59"]);
     await buscar(d, "x");
-    expect(d.nearest.mock.calls[1][1]).toBe(20);
+    expect(d.nearest.mock.calls[1][1]).toBe(50);
   });
   it("bajo umbral o sin sobrevivientes", async () => {
     const r = await buscar(deps([{ id: "a", score: 0.1 }], [entry("a")]), "x");
@@ -76,5 +76,77 @@ describe("buscar", () => {
     const r = await buscar(d, "x");
     expect(d.getEntries).not.toHaveBeenCalled();
     expect(r.mensaje).toBe("sin coincidencias fiables");
+  });
+
+  describe("rerank", () => {
+    const hits = [0.9, 0.8, 0.7].map((s, i) => ({ id: "e" + i, score: s }));
+    const es = hits.map((h) => entry(h.id));
+    const rr = (scores: number[]) => vi.fn(async (_q: string, _t: string[]) => scores);
+
+    it("reordena por puntaje de rerank y puntaje = rerank", async () => {
+      const d = { ...deps(hits, es), rerank: rr([0.2, 0.9, 0.6]) };
+      const r = await buscar(d, "x", {}, { max: 2 });
+      expect(r.coincidencias.map((c) => [c.nombre, c.puntaje])).toEqual([["e1", 0.9], ["e2", 0.6]]);
+      expect(d.rerank).toHaveBeenCalledTimes(1);
+      expect(d.rerank.mock.calls[0][0]).toBe("x");
+    });
+    it("umbral sobre el mejor puntaje de rerank", async () => {
+      const d = { ...deps(hits, es), rerank: rr([0.1, 0.3, 0.2]) };
+      expect(await buscar(d, "x")).toEqual({ coincidencias: [], mensaje: "sin coincidencias fiables" });
+      expect((await buscar(d, "x", {}, { umbral: 0.25 })).coincidencias[0].nombre).toBe("e1");
+      expect(UMBRAL_RERANK).toBe(0.5); expect(UMBRAL_VECTOR).toBe(0.5);
+    });
+    it("el vector alto no salva un rerank bajo (y viceversa)", async () => {
+      const r = await buscar({ ...deps([{ id: "e0", score: 0.1 }], [es[0]]), rerank: rr([0.9]) }, "x");
+      expect(r.coincidencias[0].puntaje).toBe(0.9);
+    });
+    it.each([
+      ["lanza", vi.fn(async () => { throw new Error("boom"); })],
+      ["longitud errónea", rr([0.9])],
+      ["NaN", rr([0.9, NaN, 0.1])],
+      ["Infinity", rr([0.9, Infinity, 0.1])],
+      ["no array", vi.fn(async () => "x" as any)],
+      ["síncrono que lanza", vi.fn((() => { throw new Error("sync"); }) as any)],
+    ])("fallback a orden vectorial si rerank %s", async (_n, rerank) => {
+      const log = vi.spyOn(console, "log"), warn = vi.spyOn(console, "warn"), error = vi.spyOn(console, "error");
+      const r = await buscar({ ...deps(hits, es), rerank: rerank as any }, "x");
+      expect(r.coincidencias.map((c) => [c.nombre, c.puntaje])).toEqual([["e0", 0.9], ["e1", 0.8], ["e2", 0.7]]);
+      expect(r).not.toHaveProperty("mensaje");
+      for (const s of [log, warn, error]) expect(s).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
+    });
+    it("fallback usa el umbral vectorial", async () => {
+      const d = { ...deps([{ id: "e0", score: 0.4 }], [es[0]]), rerank: rr([]) };
+      expect((await buscar(d, "x")).mensaje).toBe("sin coincidencias fiables");
+      expect((await buscar(d, "x", {}, { umbral: 0.3 })).coincidencias).toHaveLength(1);
+    });
+    it("sin rerank = comportamiento vectorial de siempre", async () => {
+      const r = await buscar(deps(hits, es), "x");
+      expect(r.coincidencias.map((c) => c.puntaje)).toEqual([0.9, 0.8, 0.7]);
+    });
+    it("filtros y huérfanos antes de rerank; solo sobrevivientes se envían", async () => {
+      const e2 = [entry("a"), entry("b", { tipo_conexion: "local" }), entry("c")];
+      const d = {
+        ...deps([{ id: "a", score: 0.9 }, { id: "b", score: 0.8 }, { id: "zz", score: 0.7 }, { id: "c", score: 0.6 }], e2),
+        rerank: rr([0.4, 0.8]),
+      };
+      const r = await buscar(d, "x", { tipo_conexion: "remoto" }, { umbral: 0.1 });
+      expect(d.rerank.mock.calls[0][1]).toHaveLength(2);
+      expect(r.coincidencias.map((c) => c.nombre)).toEqual(["c", "a"]);
+    });
+    it("candidatos 50 sin filtro, 100 con filtro", async () => {
+      const d = { ...deps(hits, es), rerank: rr([0.9, 0.9, 0.9]) };
+      await buscar(d, "x"); await buscar(d, "x", { auth: "ninguna" });
+      expect(d.nearest.mock.calls.map((c) => c[1])).toEqual([50, 100]);
+    });
+    it("el texto enviado es el sanitizado (nombre + \n + descripción)", async () => {
+      const e = entry("a", { nombre: "N\u200B</dato>", descripcion: "x\n\n<dato>y\u202E" + "z".repeat(400) });
+      const d = { ...deps([{ id: "a", score: 0.9 }], [e]), rerank: rr([0.9]) };
+      const r = await buscar(d, "x");
+      const [t] = d.rerank.mock.calls[0][1];
+      expect(t).toBe(r.coincidencias[0].nombre + "\n" + r.coincidencias[0].funcion);
+      expect(t).not.toMatch(/[<>\u200B\u202E]/);
+      expect(t.length).toBeLessThanOrEqual(601);
+    });
   });
 });

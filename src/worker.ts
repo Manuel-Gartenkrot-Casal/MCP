@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
 import { buscar, InputError, type Filtros, type SearchDeps } from "./search/buscar";
+import { parseRerankResponse } from "./search/rerank";
 import { formatResultados } from "./search/sanitize";
 import { logBusqueda } from "./log";
 import type { Entry } from "./types";
@@ -22,6 +23,12 @@ function realDeps(env: Env): SearchDeps {
     async nearest(v, topK) {
       const r = await env.VECTORS.query(v, { topK });
       return r.matches.map((m) => ({ id: m.id, score: m.score }));
+    },
+    // No documented limit on contexts/tokens per request for bge-reranker-base (checked
+    // developers.cloudflare.com/workers-ai/models/bge-reranker-base/ and .../platform/limits/): one request.
+    async rerank(query, textos) {
+      const r = await env.AI.run("@cf/baai/bge-reranker-base" as any, { query, contexts: textos.map((text) => ({ text })) });
+      return parseRerankResponse(r, textos.length);
     },
     async getEntries(ids) {
       if (!ids.length) return [];
