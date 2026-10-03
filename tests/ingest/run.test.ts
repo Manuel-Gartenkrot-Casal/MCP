@@ -271,6 +271,58 @@ describe("poda de entradas que salen del cupo", () => {
   });
 });
 
+describe("reindex", () => {
+  const three = [mk("a"), mk("b"), mk("c")];
+  it("reindex: re-embebe y re-sube (vector + fila) aunque actualizado no cambie; cuentan como nuevas", async () => {
+    const f = fake(three);
+    await runIngest(f.deps);
+    f.embedded.length = 0; f.upsertCalls.length = 0;
+    const filas: string[] = [];
+    const up = f.deps.store.upsertEntries;
+    f.deps.store.upsertEntries = async (es) => { filas.push(...es.map((e) => e.id)); return up(es); };
+    f.deps.reindex = true;
+    const r = await runIngest(f.deps);
+    expect(r).toEqual({ nuevas: 3, omitidas: 0, fallidas: 0, fuera_de_cupo: 0, podadas: 0 });
+    expect(f.embedded.sort()).toEqual(["Na\nDa", "Nb\nDb", "Nc\nDc"]);
+    expect(f.upsertCalls).toEqual([3]);
+    expect(filas.sort()).toEqual(["a", "b", "c"]);
+  });
+  it("sin reindex (por defecto) se siguen omitiendo", async () => {
+    const f = fake(three);
+    await runIngest(f.deps);
+    f.embedded.length = 0;
+    f.deps.reindex = false;
+    expect(await runIngest(f.deps)).toMatchObject({ nuevas: 0, omitidas: 3 });
+    expect(f.embedded).toEqual([]);
+  });
+  const ten = Array.from({ length: 10 }, (_, i) => mk("s" + i));
+  const fresh = (n: number) => Array.from({ length: n }, (_, i) => mk("n" + i, { actualizado: "2026-05-01" }));
+  it("reindex no salta la guarda de >50% obsoletas: no poda, re-embebe dentro del cupo", async () => {
+    const logs: string[] = [];
+    const f = fake(ten, { maxVectors: 12, log: (m) => logs.push(m) });
+    await runIngest(f.deps);
+    f.deps.fetchEntries = async () => [...ten.slice(0, 4), ...fresh(6)];
+    f.deps.reindex = true;
+    const r = await runIngest(f.deps);
+    expect(r).toMatchObject({ podadas: 0, nuevas: 6, fuera_de_cupo: 4, omitidas: 0 });
+    expect(f.ops).toEqual([]);
+    expect(f.rows.size).toBe(12);
+    expect(logs.some((l) => /aviso.*poda/i.test(l))).toBe(true);
+  });
+  it("reindex no salta la guarda de registro vacío/diminuto", async () => {
+    for (const fetched of [[], ten.slice(0, 4)]) {
+      const f = fake(ten, { maxVectors: 10 });
+      await runIngest(f.deps);
+      f.deps.fetchEntries = async () => fetched;
+      f.deps.reindex = true;
+      const r = await runIngest(f.deps);
+      expect(r.podadas).toBe(0);
+      expect(f.ops).toEqual([]);
+      expect(f.rows.size).toBe(10);
+    }
+  });
+});
+
 describe("exitCodeFor", () => {
   it("1 si hubo fallidas, 0 si no", () => {
     expect(exitCodeFor({ fallidas: 0 })).toBe(0);

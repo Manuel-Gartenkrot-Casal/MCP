@@ -20,6 +20,7 @@ export interface IngestDeps {
   log(msg: string): void;
   maxVectors?: number;
   forcePrune?: boolean; // bypasses ONLY the >50%-stale guard, never the empty/tiny-registry one
+  reindex?: boolean; // re-embed every kept entry (new model/index); prune guards unchanged
 }
 
 // Best first: remote, has url_info, description >= 40 chars, newest, then id.
@@ -68,7 +69,7 @@ export async function runIngest(
   }
 
   const existing = await deps.store.getActualizados(kept.map((e) => e.id));
-  let todo = kept.filter((e) => needsEmbedding(existing.get(e.id), e));
+  let todo = deps.reindex ? kept : kept.filter((e) => needsEmbedding(existing.get(e.id), e));
   const omitidas = kept.length - todo.length;
   if (pruneSkipped) {
     // Nothing was pruned, so stored + new entries must still fit in the index.
@@ -119,6 +120,7 @@ export async function main(): Promise<void> {
     deleteVectors: vectorizeDelete({ accountId, index, token }),
     log: (m) => console.log(m),
     forcePrune: process.env.FORCE_PRUNE === "1",
+    reindex: process.env.REINDEX === "1",
   });
   process.exitCode = exitCodeFor(r); // counts already logged by runIngest
 }
