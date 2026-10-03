@@ -2,10 +2,17 @@ name: ingest
 on:
   schedule:
     - cron: "17 3 * * *"
+  push:
+    tags:
+      - "reindex-*" # re-embeds every entry (REINDEX=1) after the Vectorize index was recreated
   workflow_dispatch:
     inputs:
       force_prune:
         description: "Forzar la poda aunque borre más de la mitad del índice"
+        type: boolean
+        default: false
+      reindex:
+        description: "Reindexar: re-embeber todas las entradas (tras recrear el índice Vectorize)"
         type: boolean
         default: false
 permissions:
@@ -16,7 +23,7 @@ concurrency:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,3 +37,4 @@ jobs:
           CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
           CF_VECTORIZE_INDEX: ${{ secrets.CF_VECTORIZE_INDEX }}
           FORCE_PRUNE: ${{ inputs.force_prune && '1' || '' }}
+          REINDEX: ${{ (startsWith(github.ref_name, 'reindex-') || inputs.reindex) && '1' || '' }}
