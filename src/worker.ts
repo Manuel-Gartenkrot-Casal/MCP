@@ -75,8 +75,14 @@ function buildServer(env: Env, ctx: ExecutionContext, ip: string, host: string) 
 }
 
 const MAX_BODY = 16 * 1024;
-const err = (status: number, message: string, headers?: HeadersInit) =>
-  Response.json({ jsonrpc: "2.0", id: null, error: { code: -32000, message } }, { status, headers });
+const err = (status: number, message: string, headers?: HeadersInit, code = -32000) =>
+  Response.json({ jsonrpc: "2.0", id: null, error: { code, message } }, { status, headers });
+
+// Lotes JSON-RPC: una petición HTTP (un token del limitador) podría llevar cientos de llamadas. Se parsea de verdad
+// (un prefijo no basta: espacios/BOM delante). JSON inválido u objeto suelto siguen al transporte tal cual.
+function esLote(body: Uint8Array): boolean {
+  try { return Array.isArray(JSON.parse(new TextDecoder().decode(body))); } catch { return false; }
+}
 
 // Reads at most MAX_BODY bytes (enforced while streaming, so it holds without content-length); null if exceeded.
 async function readCapped(req: Request): Promise<Uint8Array | null> {
@@ -113,6 +119,7 @@ export default {
     if (req.method !== "POST") return err(405, "Método no permitido; usa POST.", { Allow: "POST" });
     const body = await readCapped(req);
     if (!body) return err(413, "Petición demasiado grande (máximo 16 KB).");
+    if (esLote(body)) return err(400, "No se admiten lotes de peticiones.", undefined, -32600);
     // Stateless: fresh server + transport per request, JSON responses (no SSE/session).
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
     await buildServer(env, ctx, ip, new URL(req.url).host).connect(transport);
