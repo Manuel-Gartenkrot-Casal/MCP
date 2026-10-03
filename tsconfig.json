@@ -11,5 +11,5 @@
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
-  "include": ["src", "scripts", "tests", "eval"]
+  "include": ["src", "scripts", "tests", "eval", "local"]
 }
