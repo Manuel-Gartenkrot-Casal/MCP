@@ -37,13 +37,17 @@ Otros clientes con Streamable HTTP (forma del JSON por verificar según el clien
 ## Cómo funciona
 
 1. Una GitHub Action diaria (`.github/workflows/ingest.yml`) lee el registro oficial de MCP (`version=latest`).
-2. Descarta las entradas sin forma de conexión declarada y las de id de más de 64 bytes (límite de Vectorize); ordena el resto por calidad (remoto, con URL, descripción útil, reciente) y se queda con las mejores 4.500 (`MAX_VECTORS`).
-3. Borra de Vectorize y luego de D1 las entradas que han salido de ese top (salvo si el registro devolvió menos de la mitad de lo almacenado o la poda borraría más de la mitad del índice; sin poda, las entradas nuevas no superan `MAX_VECTORS`). Genera embeddings con `@cf/baai/bge-m3` (1024 dimensiones) en lotes de 50, los sube a Vectorize y guarda las fichas en D1 (reintenta 429/5xx). Si alguna entrada falla, la ejecución de la Action termina en error.
-4. El Worker embebe la consulta, busca vecinos en Vectorize (50; 100 si hay filtros), lee las fichas en D1 y aplica los filtros. Si el mejor puntaje vectorial queda bajo el umbral (`UMBRAL_VECTOR`, 0.5 provisional) responde "sin coincidencias fiables"; si no, devuelve hasta 10 resultados con su puntaje vectorial.
+2. Descarta las entradas sin forma de conexión declarada y las de id de más de 64 bytes (límite de Vectorize); ordena el resto por calidad (remoto, con URL, descripción útil, reciente) y se queda con las mejores `MAX_VECTORS` (38.281 con 128 dimensiones: todas o casi todas las elegibles).
+3. Borra de Vectorize y luego de D1 las entradas que han salido de ese top (salvo si el registro devolvió menos de la mitad de lo almacenado o la poda borraría más de la mitad del índice; sin poda, las entradas nuevas no superan `MAX_VECTORS`). Genera embeddings (ver "Modelo de embeddings") en lotes de 25, los sube a Vectorize y guarda las fichas en D1 (reintenta 429/5xx). Si alguna entrada falla, la ejecución de la Action termina en error.
+4. El Worker embebe la consulta con el mismo modelo y la misma reducción, busca vecinos en Vectorize (50; 100 si hay filtros), lee las fichas en D1 y aplica los filtros. Si el mejor puntaje vectorial queda bajo el umbral (`UMBRAL_VECTOR`, 0.5 provisional) responde "sin coincidencias fiables"; si no, devuelve hasta 10 resultados con su puntaje vectorial.
    Existe un paso de reranker (`@cf/baai/bge-reranker-base`, con fallback al orden vectorial si falla) pero está DESACTIVADO (`RERANK_ENABLED = false` en `src/search/buscar.ts`): ver "Límites conocidos". Mientras esté desactivado no se llama a Workers AI para el reranker.
 5. Cada búsqueda se registra en R2 (consulta, filtros, nº de resultados) y se borra a los 30 días.
 
-Limitación honesta: solo se indexan ~4.500 de las ~38.500 entradas del registro (el límite gratuito de Vectorize son 5 M de dimensiones almacenadas, ~4.880 vectores a 1024-d); el resto no aparece en las búsquedas. Los resultados son texto de terceros (nombres y descripciones del registro) y se entregan delimitados como datos, no como instrucciones.
+### Modelo de embeddings
+
+`src/embedding.ts` es la única fuente: `@cf/google/embeddinggemma-300m` (multilingüe, 768 dimensiones nativas, entrenado para poder recortarse). Cada vector se recorta a sus primeras `EMBED_DIMS` = 128 componentes y se renormaliza (L2); documentos (`nombre` + salto + `descripcion`) y consultas van en texto plano, sin prefijos de tarea. El plan gratuito de Vectorize almacena 5.000.000 de dimensiones: con 1024 (bge-m3, el modelo anterior) cabían ~4.500 entradas; con 128 caben `MAX_VECTORS` = ⌊5.000.000 × 0,98 / 128⌋ = 38.281 (2 % de margen): todas o casi todas las entradas elegibles del registro. Medido sobre los 20 casos del eval y las 4.500 entradas de entonces (rama `resultados`, `experimento-*.md`): bge-m3 1024 → top-5 12/20, MRR 0,498; EmbeddingGemma 128 → 14/20, MRR 0,567 (768 → 15/20, 0,709). La dimensión final la fija el experimento sobre el corpus completo (`completo-*.md`); cambiarla exige reindexar (ver "Reindexar").
+
+Cobertura (estado tras el reindexado; ver "Reindexar"): se indexan todas o casi todas las entradas elegibles del registro (~38.000), remotas y locales. Hasta que el reindexado termine, el índice desplegado puede seguir siendo el anterior (~4.500 remotas, bge-m3) o estar a medio llenar. Los resultados son texto de terceros (nombres y descripciones del registro) y se entregan delimitados como datos, no como instrucciones.
 
 ## Pasarela: explorar y llamar
 
@@ -71,8 +75,8 @@ Una sola vez, con tu cuenta de Cloudflare (`npx wrangler login` antes):
 2. Crea la base D1: `npx wrangler d1 create catalogo-mcp` y copia el `database_id`.
 3. En `wrangler.toml`, reemplaza `database_id = "REPLACE_ME"` por ese id. `wrangler d1 create` sugiere un binding llamado `catalogo_mcp`: no lo uses (ni dejes el bloque duplicado); el código espera el `[[d1_databases]]` existente con `binding = "DB"`.
 4. Aplica la migración: `npx wrangler d1 migrations apply catalogo-mcp --remote`
-5. Crea el índice Vectorize (las dimensiones deben coincidir con `EMBEDDING_DIMS`, 1024; la métrica cosine es la elegida para bge-m3; en el despliegue real Vectorize guarda 4.500 vectores de 1024 dimensiones):
-   `npx wrangler vectorize create catalogo-mcp --dimensions=1024 --metric=cosine`
+5. Crea el índice Vectorize (las dimensiones deben coincidir con `EMBED_DIMS` de `src/embedding.ts`, hoy 128; métrica cosine):
+   `npx wrangler vectorize create catalogo-mcp --dimensions=128 --metric=cosine`
 6. Crea el bucket R2: `npx wrangler r2 bucket create catalogo-mcp-logs`. Hay que activar R2 antes en el panel de Cloudflare (si no, error 10042); puede pedir un método de pago aunque se quede en el plan gratuito.
 7. En `wrangler.toml`: los `namespace_id` de los tres rate limits (48291-48293) son enteros elegidos para esta cuenta; cámbialos si tu cuenta ya los usa.
 8. Regla de ciclo de vida de R2 (borra los logs de búsqueda a los 30 días; opciones `--name/--prefix/--expire-days` verificadas con `--help`; `--force` omite la confirmación):
@@ -83,7 +87,7 @@ Una sola vez, con tu cuenta de Cloudflare (`npx wrangler login` antes):
 10. En GitHub, Settings > Secrets and variables > Actions, añade los 4 secretos:
    `CF_ACCOUNT_ID`, `CF_API_TOKEN` (con permisos D1 y Vectorize edit y Workers AI read; alcance exacto por verificar), `CF_D1_DATABASE_ID`, `CF_VECTORIZE_INDEX` (`catalogo-mcp`).
 11. Lanza la ingesta una vez: pestaña Actions > `ingest` > Run workflow. Revisa en el log `nuevas / omitidas / fallidas / fuera_de_cupo / podadas`.
-12. Con la ingesta hecha, define las 4 variables de entorno del paso 10 en tu shell y ejecuta `npm run eval`. El informe compara solo vector y con reranker. Pon el umbral recomendado del modo vectorial en `UMBRAL_VECTOR` de `src/search/buscar.ts` (ahora `0.5`), vuelve a desplegar.
+12. Con la ingesta hecha, ejecuta el eval: empuja un tag `eval-N` (workflow `eval`, publica el informe en la rama `resultados`) o define las 4 variables de entorno del paso 10 en tu shell y ejecuta `npm run eval`. El informe compara solo vector y con reranker. Pon el umbral recomendado del modo vectorial en `UMBRAL_VECTOR` de `src/search/buscar.ts` (ahora `0.5`), vuelve a desplegar.
 13. Prueba de humo: añade la URL a un cliente MCP (ver arriba) y llama a `buscar` con una necesidad real; comprueba que devuelve resultados y que una consulta absurda devuelve "sin coincidencias".
 
 Pasarela (instrucciones para el usuario, después de lo anterior):
@@ -97,11 +101,21 @@ Pasarela (instrucciones para el usuario, después de lo anterior):
 17. Pon `GATEWAY_ENABLED = "1"` en `wrangler.toml` y vuelve a desplegar: `npx wrangler deploy`.
 18. Prueba de humo de la pasarela: con `buscar` obtén un `id`; `explorar` ese `id`; `llamar` a una herramienta `solo_lectura` con el `sesion` devuelto. Comprueba que un servidor que pide clave devuelve el mensaje de autenticación, que una herramienta sin marca pide `confirmar` y que una sesión caducada (espera más de 10 min, o usa una que el destino ya olvidó) devuelve "La sesión ha expirado; vuelve a explorar el servidor." y se recupera con `explorar`.
 
+## Reindexar
+
+Las dimensiones de un índice Vectorize son fijas: al cambiar `EMBED_MODEL` o `EMBED_DIMS` hay que recrear el índice y volver a embeber todo. D1 no se toca (sus filas dicen "ya embebida", por eso el modo `REINDEX` ignora esa marca). Procedimiento de corte (es el que lleva del índice bge-m3/1024 al actual):
+
+1. Borra y recrea el índice con el mismo nombre y `--dimensions` = `EMBED_DIMS`:
+   `npx wrangler vectorize delete catalogo-mcp` y `npx wrangler vectorize create catalogo-mcp --dimensions=128 --metric=cosine`
+2. Despliega el Worker con el nuevo modelo: `npx wrangler deploy`.
+3. Empuja un tag `reindex-N` (`git tag reindex-1 && git push origin reindex-1`; o Actions > `ingest` > Run workflow con `reindex` = true): la ingesta corre con `REINDEX=1` y re-embebe y re-sube cada entrada (cuentan como `nuevas`). Tarda ~15-30 min; mientras tanto las búsquedas devuelven resultados parciales. Si termina con `fallidas` > 0, repite el reindexado (una ingesta normal las omitiría porque su fila de D1 ya existe).
+4. Empuja un tag `eval-N` para medir; el informe queda en la rama `resultados` (`eval-<fecha>.md`). `UMBRAL_VECTOR` (0.5) es provisional: se recalibra con ese primer eval posterior al reindexado.
+
 ## Desarrollo
 
     npm test                  # vitest
     npx tsc --noEmit -p .     # tipos
-    npm run eval              # evalúa vector vs reranker contra el índice real (requiere las 4 variables CF_*)
+    npm run eval              # evalúa vector vs reranker contra el índice real (requiere las 4 variables CF_*; o tag eval-N)
     npm run dev               # wrangler dev
 
 ## Límites conocidos
@@ -109,14 +123,14 @@ Pasarela (instrucciones para el usuario, después de lo anterior):
 - Plan gratuito de Workers: 100.000 peticiones/día y 10 ms de CPU por petición.
 - Rate limit: 30 peticiones por 60 s por cliente (IP), contadores por ubicación; si el limitador falla, el servicio sigue abierto.
 - Peticiones: solo `POST` (salvo `GET /`, la página web), cuerpo máx. 16 KB, sin lotes JSON-RPC (400).
-- Poda: las entradas que salen del top 4.500 se borran en cada ingesta; si el registro devuelve vacío o menos de la mitad de lo almacenado, o si la poda borraría más de la mitad del índice, se omite (aviso en el log) para no vaciarlo; en ese caso las entradas nuevas que no quepan en `MAX_VECTORS` cuentan como `fuera_de_cupo`. Se ignoran las entradas con estado `deleted` del registro.
+- Poda: las entradas que salen del top `MAX_VECTORS` se borran en cada ingesta; si el registro devuelve vacío o menos de la mitad de lo almacenado, o si la poda borraría más de la mitad del índice, se omite (aviso en el log) para no vaciarlo; en ese caso las entradas nuevas que no quepan en `MAX_VECTORS` cuentan como `fuera_de_cupo`. Se ignoran las entradas con estado `deleted` del registro.
 - Riesgo de bloqueo: si más de la mitad de lo almacenado queda obsoleta de golpe (cambio de ranking, reorganización del registro) la poda se omite en cada ejecución y, con el índice lleno, no entra ninguna entrada nueva; solo queda el aviso en el log. Recuperación manual: Actions > `ingest` > Run workflow > `force_prune` = true (no salta la guarda de registro vacío/diminuto).
 - GitHub desactiva los workflows programados tras 60 días sin actividad en el repositorio; si la ingesta deja de ejecutarse, reactívala en la pestaña Actions.
-- Workers AI gratis: 10.000 neuronas/día; la ingesta es incremental para caber.
+- Workers AI gratis: 10.000 neuronas/día; la ingesta diaria es incremental. Un reindexado embebe ~38.000 documentos de una vez (coste en neuronas por verificar en el primer reindexado). Cloudflare limita la API REST a 1.200 peticiones / 5 min y un reindexado hace ~7.700: los 429 se reintentan esperando `Retry-After`.
 - El catálogo depende del registro oficial; las entradas sin conexión declarada (ni remota ni paquete) se omiten, y la autenticación `oauth` no es detectable, así que nunca se emite (los remotos sin cabeceras declaradas quedan como `desconocida`).
-- Las 4.500 entradas indexadas son todas remotas (el ranking de calidad llena el cupo con remotos primero), así que el filtro `tipo_conexion: "local"` de `buscar` hoy no devuelve resultados.
+- Hasta completar el reindexado, el índice anterior solo tiene ~4.500 entradas remotas y el filtro `tipo_conexion: "local"` no devuelve resultados; después del reindexado entran también las locales.
 - Límites diarios de Durable Objects en Workers Free (peticiones, duración y filas escritas): no verificados (por verificar). La duración se factura mientras el DO espera al destino (hasta 20 s por llamada) y cada `explorar` escribe varias filas; un usuario intensivo podría agotar la cuota gratuita y la pasarela respondería "error interno" hasta el reinicio.
 - R2 (por verificar): cada `buscar` y cada llamada de la pasarela que pasa la puerta hace un `put` (operación de clase A); con abuso intenso podría superarse el millón gratuito al mes.
 - Cliente MCP saliente mínimo y propio: solo la primera página de `tools/list`, sin streaming hacia el cliente, sin recursos ni prompts.
 - Un destino colgado retiene el cerrojo de esa sesión como máximo 20 s (el timeout).
-- Reranker implementado pero DESACTIVADO (2026-10-02). Eval real sobre el índice desplegado: solo vector, top-5 12/20 (en 6/12, es 6/8); con reranker 13/20 (en 8/12, es 5/8): +1 caso en total y el español empeora. Los puntajes de `bge-reranker-base` (probabilidades en [0,1], respuesta ordenada por puntaje y alineada por `id`) son diminutos para consultas en lenguaje natural (0.000-0.003), así que ningún umbral absoluto sirve y las consultas legítimas en español se rechazaban. Reactivar: `RERANK_ENABLED = true`, repetir `npm run eval` (el barrido del reranker incluye umbrales 0.001-0.99) y recalibrar `UMBRAL_RERANK` (0.5, sin calibrar). Lo siguiente a probar sería un reranker multilingüe (tipo `bge-reranker-v2-m3`, solo si existe en Workers AI; por verificar). Sin verificar: que el binding `env.AI` del Worker devuelva la misma forma que la REST y el límite de contextos con 100 candidatos.
+- Reranker implementado pero DESACTIVADO (2026-10-02). Eval real sobre el índice desplegado entonces (bge-m3): solo vector, top-5 12/20 (en 6/12, es 6/8); con reranker 13/20 (en 8/12, es 5/8): +1 caso en total y el español empeora. Los puntajes de `bge-reranker-base` (probabilidades en [0,1], respuesta ordenada por puntaje y alineada por `id`) son diminutos para consultas en lenguaje natural (0.000-0.003), así que ningún umbral absoluto sirve y las consultas legítimas en español se rechazaban. Reactivar: `RERANK_ENABLED = true`, repetir `npm run eval` (el barrido del reranker incluye umbrales 0.001-0.99) y recalibrar `UMBRAL_RERANK` (0.5, sin calibrar). Lo siguiente a probar sería un reranker multilingüe (tipo `bge-reranker-v2-m3`, solo si existe en Workers AI; por verificar). Sin verificar: que el binding `env.AI` del Worker devuelva la misma forma que la REST y el límite de contextos con 100 candidatos.
