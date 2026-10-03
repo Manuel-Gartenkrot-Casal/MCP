@@ -19,6 +19,7 @@ export interface IngestDeps {
   deleteVectors(ids: string[]): Promise<void>;
   log(msg: string): void;
   maxVectors?: number;
+  forcePrune?: boolean; // bypasses ONLY the >50%-stale guard, never the empty/tiny-registry one
 }
 
 // Best first: remote, has url_info, description >= 40 chars, newest, then id.
@@ -54,7 +55,10 @@ export async function runIngest(
   const keptIds = new Set(kept.map((e) => e.id));
   const stale = stored.filter((id) => !keptIds.has(id));
   // Second guard: a partial fetch that passed the raw-count guard must not delete most of the index.
-  const pruneSkipped = all.length === 0 || all.length < stored.length * 0.5 || stale.length > stored.length * 0.5;
+  const tiny = all.length === 0 || all.length < stored.length * 0.5;
+  const mostlyStale = stale.length > stored.length * 0.5;
+  if (mostlyStale && !tiny && deps.forcePrune) deps.log(`aviso: poda forzada (FORCE_PRUNE): ${stale.length} de ${stored.length} almacenadas obsoletas`);
+  const pruneSkipped = tiny || (mostlyStale && !deps.forcePrune);
   if (pruneSkipped) {
     deps.log(`aviso: registro con ${all.length} entradas, ${stale.length} de ${stored.length} almacenadas quedarían obsoletas; se omite la poda`);
   } else if (stale.length) {
@@ -114,6 +118,7 @@ export async function main(): Promise<void> {
     upsertVectors: vectorizeUpsert({ accountId, index, token }),
     deleteVectors: vectorizeDelete({ accountId, index, token }),
     log: (m) => console.log(m),
+    forcePrune: process.env.FORCE_PRUNE === "1",
   });
   process.exitCode = exitCodeFor(r); // counts already logged by runIngest
 }

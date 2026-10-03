@@ -5,7 +5,7 @@ Servidor MCP público, gratuito y de solo lectura, en Cloudflare Workers. Expone
 `buscar(necesidad, tipo_conexion?, auth?)`: busca por significado en un catálogo de servidores MCP y devuelve los más relevantes con cómo conectarlos.
 
 - `necesidad`: texto libre (máx. 2000 caracteres), en español o inglés.
-- `tipo_conexion`: `remoto` | `local`. `auth`: `ninguna` | `clave` | `oauth` | `desconocida`.
+- `tipo_conexion`: `remoto` | `local`. `auth`: `ninguna` | `clave` | `oauth` | `desconocida` (`oauth` se acepta como filtro pero el catálogo nunca lo asigna, así que no devuelve resultados).
 
 ## Añadirlo a un cliente MCP
 
@@ -68,6 +68,7 @@ Una sola vez, con tu cuenta de Cloudflare (`npx wrangler login` antes):
 - Rate limit: 30 peticiones por 60 s por cliente (IP), contadores por ubicación; si el limitador falla, el servicio sigue abierto.
 - Peticiones: solo `POST`, cuerpo máx. 16 KB.
 - Poda: las entradas que salen del top 4.500 se borran en cada ingesta; si el registro devuelve vacío o menos de la mitad de lo almacenado, o si la poda borraría más de la mitad del índice, se omite (aviso en el log) para no vaciarlo; en ese caso las entradas nuevas que no quepan en `MAX_VECTORS` cuentan como `fuera_de_cupo`. Se ignoran las entradas con estado `deleted` del registro.
+- Riesgo de bloqueo: si más de la mitad de lo almacenado queda obsoleta de golpe (cambio de ranking, reorganización del registro) la poda se omite en cada ejecución y, con el índice lleno, no entra ninguna entrada nueva; solo queda el aviso en el log. Recuperación manual: Actions > `ingest` > Run workflow > `force_prune` = true (no salta la guarda de registro vacío/diminuto).
 - GitHub desactiva los workflows programados tras 60 días sin actividad en el repositorio; si la ingesta deja de ejecutarse, reactívala en la pestaña Actions.
 - Workers AI gratis: 10.000 neuronas/día; la ingesta es incremental para caber.
 - El catálogo depende del registro oficial; las entradas sin conexión declarada (ni remota ni paquete) se omiten, y la autenticación `oauth` no es detectable, así que nunca se emite (los remotos sin cabeceras declaradas quedan como `desconocida`).
