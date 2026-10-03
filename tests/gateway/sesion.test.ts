@@ -155,3 +155,84 @@ describe("llamar", () => {
     expect(await llamar(d, "leer")).toEqual({ ok: false, code: "sesion_expirada" });
   });
 });
+
+describe("concurrencia", () => {
+  const deferred = () => { let ok!: () => void; const p = new Promise<void>((r) => { ok = r; }); return { p, ok }; };
+  // fetch cuyo tools/list de la primera exploración espera a una puerta
+  function conPuerta() {
+    const gate = deferred();
+    const calls: any[] = [];
+    let n = 0;
+    const fn = (async (url: any, init: any) => {
+      const body = JSON.parse(init.body);
+      calls.push({ url: String(url), body, headers: init.headers });
+      switch (body.method) {
+        case "initialize": return json(rpc({}, 1), { "Mcp-Session-Id": "S" + ++n });
+        case "notifications/initialized": return new Response(null, { status: 202 });
+        case "tools/list": if (calls.filter((c) => c.body.method === "tools/list").length === 1) await gate.p;
+          return json(rpc({ tools: [{ name: "t" + n, annotations: { readOnlyHint: true } }] }, 2));
+        default: return json(rpc({ content: [], isError: false }, 3));
+      }
+    }) as unknown as typeof fetch;
+    const st = fakeDOState();
+    const d = new SesionDO(st, {});
+    d.fetchFn = fn;
+    return { d, st, calls, gate };
+  }
+  const tick = () => new Promise((r) => setTimeout(r, 5));
+
+  it("dos explorar concurrentes de servidores distintos: gana el primero, el otro sesion_otro_servidor", async () => {
+    const { d, st, calls, gate } = conPuerta();
+    const a = d.explorar("X", URL_D), b = d.explorar("Y", URL_D);
+    await tick(); gate.ok();
+    const [ra, rb]: any[] = await Promise.all([a, b]);
+    expect(ra.ok).toBe(true);
+    expect(rb).toEqual({ ok: false, code: "sesion_otro_servidor" });
+    expect(calls.filter((c) => c.body.method === "initialize")).toHaveLength(1);
+    expect(st.data.get("servidor")).toBe("X");
+    expect(st.data.get("mcpSession")).toBe("S1");
+    expect((st.data.get("tools") as any[]).map((t) => t.nombre)).toEqual(["t1"]);
+  });
+  it("dos explorar concurrentes del mismo servidor: una inicialización, la segunda reutiliza", async () => {
+    const { d, calls, gate } = conPuerta();
+    const a = d.explorar("X", URL_D), b = d.explorar("X", URL_D);
+    await tick(); gate.ok();
+    const [ra, rb]: any[] = await Promise.all([a, b]);
+    expect(ra.ok && rb.ok).toBe(true);
+    expect(calls.filter((c) => c.body.method === "initialize")).toHaveLength(1);
+    expect(calls.at(-1).headers["Mcp-Session-Id"]).toBe("S1");
+  });
+  it("un fallo de la llamada anterior no envenena la cola", async () => {
+    const { d } = montar();
+    let primera = true;
+    const f0 = d.fetchFn;
+    d.fetchFn = (async (u: any, i: any) => { if (primera) { primera = false; throw new TypeError("x"); } return f0(u, i); }) as any;
+    const a = d.explorar("X", URL_D), b = d.explorar("X", URL_D);
+    expect(await a).toEqual({ ok: false, code: "destino_caido" });
+    expect((await b).ok).toBe(true);
+  });
+  it("llamar concurrente con explorar se serializa", async () => {
+    const { d, gate, calls } = conPuerta();
+    const a = d.explorar("X", URL_D), b = d.llamar("X", URL_D, "t1", {}, false);
+    await tick();
+    expect(calls.some((c) => c.body.method === "tools/call")).toBe(false);
+    gate.ok();
+    const [ra, rb]: any[] = await Promise.all([a, b]);
+    expect(ra.ok).toBe(true);
+    expect(rb.ok).toBe(true);
+  });
+  it("alarma durante un llamar en vuelo: el almacenamiento queda vacío tras la llamada", async () => {
+    const { d, st } = montar();
+    await d.explorar("srv", URL_D);
+    const f0 = d.fetchFn;
+    d.fetchFn = (async (u: any, i: any) => { await d.alarm(); return f0(u, i); }) as any;
+    const r: any = await d.llamar("srv", URL_D, "leer", {}, false);
+    expect(r.ok).toBe(true);
+    expect(st.data.size).toBe(0);
+  });
+  it("llamar con url no https → no_remoto sin red", async () => {
+    const { d, calls } = montar();
+    expect(await d.llamar("srv", "http://x.example/", "leer", {}, false)).toEqual({ ok: false, code: "no_remoto" });
+    expect(calls).toHaveLength(0);
+  });
+});

@@ -13,12 +13,25 @@ const fallo = (e: unknown): { ok: false; code: GwCode } =>
 export class SesionDO extends DurableObject {
   fetchFn: typeof fetch = fetch;
 
-  private async tocar() {
+  // Serializa explorar/llamar por instancia (las puertas de entrada del DO se abren durante el fetch al destino).
+  // La llamada saliente queda dentro del cerrojo: el cliente la acota a 20 s, así que no se retiene más por llamada.
+  private cola: Promise<unknown> = Promise.resolve();
+  private serie<T>(fn: () => Promise<T>): Promise<T> {
+    const r = this.cola.then(fn, fn);
+    this.cola = r.catch(() => {});
+    return r;
+  }
+
+  private async renovar() {
     await this.ctx.storage.put("ultimoUso", Date.now());
     await this.ctx.storage.setAlarm(Date.now() + TTL_MS);
   }
 
-  async explorar(servidorId: string, url: string): Promise<Salida<ToolInfo[]>> {
+  explorar(servidorId: string, url: string): Promise<Salida<ToolInfo[]>> {
+    return this.serie(() => this.explorar_(servidorId, url));
+  }
+
+  private async explorar_(servidorId: string, url: string): Promise<Salida<ToolInfo[]>> {
     if (typeof url !== "string" || !url.startsWith("https://")) return { ok: false, code: "no_remoto" };
     const st = this.ctx.storage;
     const guardado = await st.get<string>("servidor");
@@ -30,15 +43,21 @@ export class SesionDO extends DurableObject {
       const raw = await listarHerramientas({ url, sessionId }, this.fetchFn);
       const tools = raw.map(toToolInfo).filter((t): t is ToolInfo => t !== null);
       // Solo ahora se persiste: un fallo previo no deja el token ligado a una sesión a medias.
-      await st.put("servidor", servidorId);
-      if (sessionId !== undefined) await st.put("mcpSession", sessionId); else await st.delete("mcpSession");
-      await st.put("tools", tools);
-      await this.tocar();
+      const ahora = await st.get<string>("servidor");
+      if (ahora !== undefined && ahora !== servidorId) return { ok: false, code: "sesion_otro_servidor" };
+      if (sessionId === undefined) await st.delete("mcpSession");
+      await st.put({ servidor: servidorId, tools, ultimoUso: Date.now(), ...(sessionId !== undefined && { mcpSession: sessionId }) });
+      await st.setAlarm(Date.now() + TTL_MS);
       return { ok: true, valor: tools };
     } catch (e) { return fallo(e); }
   }
 
-  async llamar(servidorId: string, url: string, herramienta: string, args: Record<string, unknown>, confirmar: boolean):
+  llamar(servidorId: string, url: string, herramienta: string, args: Record<string, unknown>, confirmar: boolean):
+    Promise<Salida<{ content: unknown[]; isError: boolean; marca: Marca }>> {
+    return this.serie(() => this.llamar_(servidorId, url, herramienta, args, confirmar));
+  }
+
+  private async llamar_(servidorId: string, url: string, herramienta: string, args: Record<string, unknown>, confirmar: boolean):
     Promise<Salida<{ content: unknown[]; isError: boolean; marca: Marca }>> {
     if (typeof url !== "string" || !url.startsWith("https://")) return { ok: false, code: "no_remoto" };
     const st = this.ctx.storage;
@@ -52,7 +71,7 @@ export class SesionDO extends DurableObject {
     try {
       const sessionId = await st.get<string>("mcpSession");
       const r = await llamarHerramienta({ url, sessionId }, herramienta, args, this.fetchFn);
-      await this.tocar();
+      if ((await st.get<string>("servidor")) === servidorId) await this.renovar(); // si la alarma borró todo, no dejar ultimoUso huérfano
       return { ok: true, valor: { ...r, marca: t.marca } };
     } catch (e) { return fallo(e); }
   }
