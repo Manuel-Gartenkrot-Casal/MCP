@@ -1,7 +1,7 @@
 export interface Case { necesidad: string; esperado: string | null; idioma?: "es" | "en" }
 export interface Hit { id: string; score: number }
 export const UMBRALES = [0.3, 0.4, 0.5, 0.6, 0.7];
-export const UMBRALES_RERANK = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99];
+export const UMBRALES_RERANK = [0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99];
 const TOP = 5;
 
 export interface Report {
@@ -76,7 +76,7 @@ export function formatReport(r: Report): string {
     L.push(`  FALLO "${f.necesidad}" -> ${f.esperado}: ${f.rank === null ? "ausente" : `rank ${f.rank}, score ${f.score!.toFixed(3)}`}`);
   L.push("Barrido de umbral:");
   for (const b of r.barrido)
-    L.push(`  ${b.umbral.toFixed(1)}: reales devueltos ${b.reales}/${r.indexadas} indexados, absurdas rechazadas ${b.absurdasRechazadas}/${r.absurdas}`);
+    L.push(`  ${b.umbral}: reales devueltos ${b.reales}/${r.indexadas} indexados, absurdas rechazadas ${b.absurdasRechazadas}/${r.absurdas}`);
   L.push(r.recomendado === null
     ? "Ningún umbral del barrido conserva todos los aciertos y rechaza todas las absurdas; revisar casos o ampliar el barrido."
     : `Umbral recomendado: ${r.recomendado}`);

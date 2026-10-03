@@ -64,7 +64,7 @@ export async function collect(d: CollectDeps, necesidad: string): Promise<{ vect
     nearest: async (v, n) => (vector = await d.query(v, n)),
     getEntries: async (ids) => (entries = await d.getEntries(ids)),
   };
-  const opts = { umbral: 0, n: 50 };
+  const opts = { umbral: 0, n: 50, rerank: true };
   await buscar(base, necesidad, {}, opts);
   let scores: number[] | null = null;
   await buscar(

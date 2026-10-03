@@ -144,40 +144,11 @@ describe("worker MCP", () => {
     expect(t).toContain("\u2039/dato\u203A");
   });
 
-  describe("rerank vía env.AI", () => {
-    const two = [row(), row({ id: "b", nombre: "Beta" })];
-    const matches = [{ id: "a", score: 0.9 }, { id: "b", score: 0.8 }];
-    const withAI = (rerank: (m: string, i: any) => any) => {
-      const env = makeEnv({ rows: two, matches });
-      env.AI.run = vi.fn(async (m: string, i: any) => (m === "@cf/baai/bge-m3" ? { data: [new Array(1024).fill(0.1)] } : rerank(m, i))) as any;
-      return env;
-    };
-    const names = (r: any) => [...r.result.content[0].text.matchAll(/<dato>(Alfa|Beta)<\/dato>/g)].map((m) => m[1]);
-
-    it("un rerank correcto cambia el orden y envía query y contexts sanitizados", async () => {
-      const env = withAI(() => [{ id: 1, score: 0.95 }, { id: 0, score: 0.05 }]);
-      const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));
-      expect(names(r)).toEqual(["Beta", "Alfa"]);
-      const [m, input] = env.AI.run.mock.calls[1] as any;
-      expect(m).toBe("@cf/baai/bge-reranker-base");
-      expect(input).toEqual({ query: "algo", contexts: [{ text: "Alfa\nhace cosas" }, { text: "Beta\nhace cosas" }] });
-      expect(r.result.content[0].text).toContain("puntaje: 0.950");
-    });
-    it("acepta la forma envuelta { response }", async () => {
-      const env = withAI(() => ({ response: [{ id: 0, score: 0.9 }, { id: 1, score: 0.8 }] }));
-      expect(names(await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx())))).toEqual(["Alfa", "Beta"]);
-    });
-    it.each([
-      ["rechaza", () => { throw new Error("secret ai down"); }],
-      ["forma inválida", () => ({ nope: true })],
-      ["ids duplicados", () => [{ id: 0, score: 0.1 }, { id: 0, score: 0.2 }]],
-      ["score fuera de [0,1]", () => [{ id: 0, score: 3 }, { id: 1, score: -2 }]],
-    ])("rerank que %s -> respuesta normal en orden vectorial", async (_n, f) => {
-      const env = withAI(f as any);
-      const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));
-      expect(r.result.isError).toBeFalsy();
-      expect(names(r)).toEqual(["Alfa", "Beta"]);
-      expect(r.result.content[0].text).not.toContain("secret");
-    });
+  it("reranker deshabilitado: env.AI.run solo se llama para el embedding y el orden es vectorial", async () => {
+    const env = makeEnv({ rows: [row(), row({ id: "b", nombre: "Beta" })], matches: [{ id: "a", score: 0.9 }, { id: "b", score: 0.8 }] });
+    const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));
+    const t: string = r.result.content[0].text;
+    expect(t.indexOf("Alfa")).toBeLessThan(t.indexOf("Beta"));
+    expect(env.AI.run.mock.calls.map((c: any[]) => c[0])).toEqual(["@cf/baai/bge-m3"]);
   });
 });

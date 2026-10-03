@@ -19,15 +19,18 @@ const CONEXIONES = ["remoto", "local"];
 const AUTHS = ["ninguna", "clave", "oauth", "desconocida"];
 export const UMBRAL_VECTOR = 0.5;
 export const UMBRAL_RERANK = 0.5; // provisional: calibrate with `npm run eval`
-// Set to false to disable the reranker (e.g. if the eval shows Spanish regressing); rerank is then never called.
-const RERANK_ENABLED = true;
+// Reranker DISABLED (2026-10-02). Real eval of the deployed index: vector-only top-5 12/20 (en 6/12, es 6/8) vs reranked
+// 13/20 (en 8/12, es 5/8): +1 case overall, Spanish regressed, and bge-reranker-base absolute scores for natural-language
+// queries are tiny (0.000-0.003), so no absolute umbral works. While false, `rerank` is never called (override per call
+// with opts.rerank, used by tests and the eval). To re-enable: set true, re-run `npm run eval`, recalibrate UMBRAL_RERANK.
+const RERANK_ENABLED = false;
 const SIN = { coincidencias: [] as Resultado[], mensaje: "sin coincidencias fiables" };
 
 export async function buscar(
   deps: SearchDeps,
   necesidad: string,
   filtros: Filtros = {},
-  opts: { n?: number; max?: number; umbral?: number } = {},
+  opts: { n?: number; max?: number; umbral?: number; rerank?: boolean } = {},
 ): Promise<{ coincidencias: Resultado[]; mensaje?: string }> {
   // Filters run after the vector query; with a filter, fetch Vectorize's max topK (100 without
   // values/metadata) so filtered-out neighbours don't starve the results. 100 ids = D1's 100-param cap.
@@ -55,7 +58,7 @@ export async function buscar(
   }
   let umbral = opts.umbral ?? UMBRAL_VECTOR;
   let lista = out;
-  const scores = out.length ? await rerankear(deps, q, out) : null;
+  const scores = out.length ? await rerankear(deps, q, out, opts.rerank ?? RERANK_ENABLED) : null;
   if (scores) {
     umbral = opts.umbral ?? UMBRAL_RERANK;
     lista = out.map((r, i) => ({ ...r, puntaje: scores[i] })).sort((a, b) => b.puntaje - a.puntaje);
@@ -65,8 +68,8 @@ export async function buscar(
 }
 
 // Scores for `out` (already sanitized, same text the user sees), or null => fall back to vector order. Never throws.
-async function rerankear(deps: SearchDeps, q: string, out: Resultado[]): Promise<number[] | null> {
-  if (!RERANK_ENABLED || !deps.rerank) return null;
+async function rerankear(deps: SearchDeps, q: string, out: Resultado[], enabled: boolean): Promise<number[] | null> {
+  if (!enabled || !deps.rerank) return null;
   try {
     const s = await deps.rerank(q, out.map((r) => r.nombre + "\n" + r.funcion));
     return puntajesValidos(s, out.length) ? s : null;
