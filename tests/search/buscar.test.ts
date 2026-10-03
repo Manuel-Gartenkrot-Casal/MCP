@@ -67,6 +67,12 @@ describe("buscar", () => {
     for (const v of [c.nombre, c.funcion, c.como_conectar]) expect(v).not.toMatch(/[<>]/);
     expect(c.funcion).not.toMatch(/\n/);
   });
+  it("devuelve el id del catálogo, sanitizado", async () => {
+    const r = await buscar(deps([{ id: "io.github.x/y", score: 0.9 }], [entry("io.github.x/y")]), "x");
+    expect(r.coincidencias[0].id).toBe("io.github.x/y");
+    const h = await buscar(deps([{ id: "a</dato>b", score: 0.9 }], [entry("a</dato>b")]), "x");
+    expect(h.coincidencias[0].id).not.toMatch(/[<>]/);
+  });
   it("ignora vectores huérfanos", async () => {
     const r = await buscar(deps([{ id: "zz", score: 0.9 }, { id: "a", score: 0.8 }], [entry("a")]), "x");
     expect(r.coincidencias.map((c) => c.nombre)).toEqual(["a"]);

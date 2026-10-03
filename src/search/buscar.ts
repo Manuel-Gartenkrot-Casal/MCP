@@ -3,7 +3,7 @@ import { sanitizeText } from "./sanitize";
 
 export interface Filtros { tipo_conexion?: Conexion; auth?: Auth }
 export interface Resultado {
-  nombre: string; funcion: string; como_conectar: string;
+  id: string; nombre: string; funcion: string; como_conectar: string;
   tipo_conexion: Conexion; auth: Auth; puntaje: number;
 }
 export interface SearchDeps {
@@ -51,7 +51,7 @@ export async function buscar(
     if (filtros.tipo_conexion && e.tipo_conexion !== filtros.tipo_conexion) continue;
     if (filtros.auth && e.auth !== filtros.auth) continue;
     out.push({
-      nombre: sanitizeText(e.nombre), funcion: sanitizeText(e.descripcion),
+      id: sanitizeText(e.id), nombre: sanitizeText(e.nombre), funcion: sanitizeText(e.descripcion),
       como_conectar: sanitizeText(e.como_conectar),
       tipo_conexion: e.tipo_conexion, auth: e.auth, puntaje: h.score,
     });

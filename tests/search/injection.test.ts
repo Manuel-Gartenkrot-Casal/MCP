@@ -35,8 +35,8 @@ describe("inyección vía datos del registro", () => {
         const out = await render(build(p));
         expect(out.startsWith(WARN + "\n")).toBe(true);
         const body = out.slice(WARN.length);
-        expect(body.match(/<\/dato>/gi)).toHaveLength(3); // one per wrapped field
-        expect(body.match(/<dato>/g)).toHaveLength(3);
+        expect(body.match(/<\/dato>/gi)).toHaveLength(4); // one per wrapped field
+        expect(body.match(/<dato>/g)).toHaveLength(4);
         // only our own delimiters contain < or >
         expect(body.replace(/<\/?dato>/g, "")).not.toMatch(/[<>]/);
         // payload survives only neutralised, inside delimiters
