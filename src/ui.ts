@@ -70,6 +70,10 @@ input:hover, select:hover { border-color: var(--ink); }
 .btn-pri:disabled { opacity: .6; cursor: progress; }
 .btn-sec { background: transparent; color: var(--ink); border-color: var(--line); font-size: .875rem; }
 .btn-sec:hover { border-color: var(--muted); }
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+#servicios { margin-top: 28px; }
+#servicios > summary { cursor: pointer; font-weight: 650; padding: 8px 0; }
+#servicios .cards { margin-top: 12px; }
 
 .ejemplos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
 .ejemplos span { color: var(--muted); font-size: .875rem; margin-right: 2px; }
@@ -228,6 +232,60 @@ async function buscar() {
   anunciar(n === 1 ? "1 resultado" : n + " resultados");
 }
 
+let serviciosCargados = false;
+const detalles = $("servicios"), svRes = $("sv-res");
+function svEstado(clase, titulo, texto) {
+  const box = el("div", "estado " + clase);
+  box.append(el("p", "t", titulo));
+  if (texto) box.append(el("p", "", texto));
+  svRes.replaceChildren(box);
+  anunciar(titulo);
+}
+function tarjetaServicio(s) {
+  const nombre = String(s.nombre);
+  const li = el("li", "card");
+  const top = el("div", "card-top");
+  top.append(el("h3", "", nombre));
+  li.append(top);
+  if (s.oauth) { const badges = el("div", "badges"); badges.append(el("span", "badge badge-acc", "Entrar con GitHub o Google")); li.append(badges); }
+  const acciones = el("div", "fila");
+  const a = el("a", "btn btn-pri", "Crear cuenta");
+  a.setAttribute("aria-label", "Crear cuenta en " + nombre);
+  if (String(s.registro_url).startsWith("https://")) { a.href = s.registro_url; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+  acciones.append(a);
+  const c = s.conexion;
+  let nota = false;
+  if (c && typeof c.como_conectar === "string") {
+    const cmd = c.tipo_conexion === "remoto" ? comando(nombre, c.como_conectar) : null;
+    const pre = el("pre", "code");
+    pre.append(el("code", "", cmd || c.como_conectar));
+    li.append(pre);
+    acciones.append(cmd ? botonCopia("Copiar comando MCP", cmd, nombre) : botonCopia("Copiar conexión", c.como_conectar, nombre));
+    nota = !cmd;
+  }
+  li.append(acciones);
+  if (nota) li.append(el("p", "nota", "Revisa el comando antes de ejecutarlo."));
+  return li;
+}
+async function cargarServicios() {
+  serviciosCargados = true;
+  svEstado("cargando", "Cargando…");
+  let r = null, data = null;
+  try {
+    r = await fetch("/api/servicios");
+    try { data = await r.json(); } catch (e) { data = null; }
+  } catch (e) { r = null; }
+  if (!r || !r.ok || !data || !Array.isArray(data.servicios)) {
+    serviciosCargados = false;
+    return svEstado("error", r && r.status === 429 ? "Demasiadas peticiones, espera un minuto." : "No se pudo cargar la lista.", "Ábrelo de nuevo para reintentar.");
+  }
+  const ol = el("ol", "cards");
+  for (const s of data.servicios) ol.append(tarjetaServicio(s));
+  svRes.replaceChildren(ol);
+  anunciar(data.servicios.length + " servicios");
+}
+detalles.addEventListener("toggle", () => { if (detalles.open && !serviciosCargados) cargarServicios(); });
+
 form.addEventListener("submit", (e) => { e.preventDefault(); buscar(); });
 for (const b of document.querySelectorAll("[data-ejemplo]")) b.addEventListener("click", () => { q.value = b.textContent; buscar(); });
 `;
@@ -305,6 +363,11 @@ export function renderPagina(nonce: string): string {
     </div>
     <noscript><p>La búsqueda necesita JavaScript.</p></noscript>
   </section>
+  <details id="servicios">
+    <summary>Servicios gratuitos para developers</summary>
+    <p>Crea tu cuenta tú mismo en cada servicio: nunca te pedimos contraseñas. Si tiene MCP, copia el comando para conectarlo.</p>
+    <div id="sv-res"></div>
+  </details>
   <p id="aviso" class="sr" role="status" aria-live="polite"></p>
 </main>
 

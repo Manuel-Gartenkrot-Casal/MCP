@@ -32,7 +32,10 @@ describe("renderPagina", () => {
     for (const bad of ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function", "Function("])
       expect(html, bad).not.toContain(bad);
     expect(script).toContain("textContent");
-    expect(script).not.toMatch(/\.href\s*=|\.src\s*=|setAttribute\(\s*["'](href|src|on)/);
+    // Única excepción: el enlace "Crear cuenta" usa registro_url de NUESTRA lista curada (no del registro de terceros), solo si es https.
+    const enlace = 'if (String(s.registro_url).startsWith("https://")) { a.href = s.registro_url;';
+    expect(script).toContain(enlace);
+    expect(script.replace(enlace, "")).not.toMatch(/\.href\s*=|\.src\s*=|setAttribute\(\s*["'](href|src|on)/);
   });
   it("llama a /api/buscar con URL relativa y POST JSON", () => {
     expect(script).toContain('fetch("/api/buscar"');
@@ -52,6 +55,12 @@ describe("renderPagina", () => {
     expect(html).toMatch(/prefers-color-scheme: dark/);
     expect(html).toMatch(/prefers-reduced-motion/);
     expect(html).toContain("Demasiadas búsquedas, espera un minuto");
+  });
+  it("tarjeta de servicio: muestra el comando que se copia y no afirma 'Registro con email'", () => {
+    const f = script.slice(script.indexOf("function tarjetaServicio"), script.indexOf("async function cargarServicios"));
+    expect(f).toContain('el("pre", "code")');
+    expect(f).toContain("c.como_conectar");
+    expect(f).not.toContain("Registro con email");
   });
   it("el script incrusta exactamente las funciones puras exportadas", () => {
     expect(script).toContain(slug.toString());

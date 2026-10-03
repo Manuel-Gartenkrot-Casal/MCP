@@ -48,7 +48,7 @@ Lista escrita a mano y en el repositorio, versionada con git. Una prueba comprue
 - Herramienta `servicios()` sin parámetros: devuelve la lista. Los textos se sanean (`<`/`>` por ‹ ›) y se entregan delimitados como dato, igual que `buscar`.
 - `GET /api/servicios`: misma lista en JSON, solo mismo origen, sin cabeceras CORS, mismo límite de uso por IP que el resto. Respuestas con `Cache-Control: no-store`.
 - Sin estado nuevo: sin D1, sin R2, sin Durable Object.
-- La conexión de un `mcp_id` reutiliza lo que ya hay: `explorar`/`llamar` si el destino es remoto sin autenticación; si no, se ofrece el comando `claude mcp add` (como en `buscar`). La pasarela sigue sin soportar autenticación: los servicios con OAuth o clave se conectan con el comando local, no desde el Worker.
+- `servicios` y `/api/servicios` añaden a cada servicio con `mcp_id` un campo `conexion` (`tipo_conexion`, `como_conectar`, `auth`) leído de D1 (solo lectura, sin estado nuevo); si el `mcp_id` ya no está en el catálogo, se lista sin `conexion`. La conexión de un `mcp_id` reutiliza lo que ya hay: `explorar`/`llamar` si el destino es remoto sin autenticación; si no, se ofrece el comando `claude mcp add` (como en `buscar`). La pasarela sigue sin soportar autenticación: los servicios con OAuth o clave se conectan con el comando local, no desde el Worker.
 
 ### MCP local `memoria` (`local/`)
 
@@ -67,7 +67,7 @@ Proceso stdio con dos herramientas. Archivo: `~/.catalogo-mcp/servicios.json`, c
 
 ### UI web
 
-Pestaña "Servicios": tarjetas con nombre, botón "Crear cuenta" (enlace `https` con `rel="noopener noreferrer"`, texto insertado con `textContent`) y, si hay `mcp_id`, "Copiar comando MCP" con la misma regla de caracteres seguros que ya existe. La página no lee ni escribe el estado local. Mantiene la CSP actual sin recursos externos.
+Desplegable nativo `<details>` "Servicios gratuitos para developers": tarjetas con nombre, botón "Crear cuenta" (enlace `https` con `rel="noopener noreferrer"`, texto insertado con `textContent`) y, si hay `mcp_id`, "Copiar comando MCP" con la misma regla de caracteres seguros que ya existe. La página no lee ni escribe el estado local. Mantiene la CSP actual sin recursos externos.
 
 ## Seguridad
 

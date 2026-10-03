@@ -8,6 +8,7 @@ import { logBusqueda } from "./log";
 import { registerGateway, type GwEnv } from "./gateway/tools";
 import { UA_PREFIJO } from "./gateway/cliente";
 import { renderPagina } from "./ui";
+import { listarServicios, formatServicios } from "./servicios";
 import { EMBED_MODEL, reducir } from "./embedding";
 import type { Entry } from "./types";
 
@@ -70,6 +71,16 @@ function buildServer(env: Env, ctx: ExecutionContext, ip: string, host: string) 
       } catch (e) {
         return e instanceof InputError ? text(e.message, true) : text("error interno", true);
       }
+    },
+  );
+  server.registerTool(
+    "servicios",
+    {
+      description:
+        "Lista servicios gratuitos útiles para developers (GitHub, Supabase, Vercel...) con el enlace para crear la cuenta y, si tienen MCP, cómo conectarlo. Nunca pidas ni envíes contraseñas: el usuario se registra él mismo. Si el MCP local `memoria` está conectado, cruza con `mis_servicios` y usa `marcar` cuando el usuario confirme que se registró.",
+    },
+    async () => {
+      try { return text(formatServicios(await listarServicios(realDeps(env).getEntries))); } catch { return text("error interno", true); }
     },
   );
   registerGateway(server, env, ctx, ip, host);
@@ -143,6 +154,11 @@ async function apiBuscar(req: Request, env: Env, ctx: ExecutionContext): Promise
   }
 }
 
+async function apiServicios(req: Request, env: Env): Promise<Response> {
+  if (req.method !== "GET") return apiErr(405, "Método no permitido; usa GET.", { Allow: "GET" });
+  try { return apiRes(200, { servicios: await listarServicios(realDeps(env).getEntries) }); } catch { return apiErr(500, "Error interno."); }
+}
+
 function pagina(): Response {
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   return new Response(renderPagina(nonce), {
@@ -169,9 +185,10 @@ export default {
     } catch {
       // fail open: a limiter outage must not take the service down
     }
-    const esApi = path === "/api/buscar";
-    if (!success) return esApi ? apiErr(429, LIMITE) : err(429, LIMITE);
+    const esApi = path === "/api/buscar", esServicios = path === "/api/servicios";
+    if (!success) return esApi || esServicios ? apiErr(429, LIMITE) : err(429, LIMITE);
     if (esApi) return apiBuscar(req, env, ctx);
+    if (esServicios) return apiServicios(req, env);
     if (req.method !== "POST") return err(405, NO_POST, { Allow: "POST" });
     const body = await readCapped(req);
     if (!body) return err(413, GRANDE);

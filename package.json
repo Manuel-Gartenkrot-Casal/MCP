@@ -7,7 +7,8 @@
     "test": "vitest run --passWithNoTests",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "eval": "tsx eval/run.ts"
+    "eval": "tsx eval/run.ts",
+    "memoria": "tsx local/server.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261002.1",

@@ -1,6 +1,6 @@
 # catalogo-mcp-busqueda
 
-Servidor MCP público, gratuito y de solo lectura, en Cloudflare Workers. Expone tres herramientas (`buscar`, `explorar`, `llamar`; las dos últimas son la pasarela, ver "Pasarela: explorar y llamar"):
+Servidor MCP público, gratuito y de solo lectura, en Cloudflare Workers. Expone cuatro herramientas (`buscar`, `servicios`, `explorar`, `llamar`; las dos últimas son la pasarela, ver "Pasarela: explorar y llamar"; `servicios`, ver "Servicios gratuitos y memoria local"):
 
 `buscar(necesidad, tipo_conexion?, auth?)`: busca por significado en un catálogo de servidores MCP y devuelve los más relevantes con su `id` y cómo conectarlos.
 
@@ -66,6 +66,17 @@ Flujo: `buscar` (devuelve el `id`) → `explorar` (lista las herramientas del se
 - Registro en R2 bajo `llamadas/` (id de servidor, nombre de herramienta, marca, tipo de resultado, duración; nunca argumentos ni resultados), borrado a los 30 días. `explorar` se registra con herramienta `(explorar)`. Solo se registran las peticiones que pasan la puerta: los rechazos por interruptor, rate limit, validación, búsqueda en D1 o validación de la URL no se registran.
 - Todo texto que viene del destino se sanitiza y se entrega delimitado como `<dato>…</dato>`: es contenido no confiable, no instrucciones.
 - Responsabilidad: una herramienta sin autenticación puede tener efectos en un servicio de terceros, ejecutados desde IPs de Cloudflare. La confirmación existe por eso, y el operador puede apagar la pasarela con `GATEWAY_ENABLED` o un servidor concreto con `GATEWAY_BLOQUEADOS`.
+
+## Servicios gratuitos y memoria local
+
+Alta guiada: no se automatiza ningún registro y ninguna herramienta ni ruta recibe contraseñas, emails o claves.
+
+- `servicios` (herramienta MCP) y `GET /api/servicios` (solo mismo origen, `no-store`, mismo límite por IP) devuelven una lista curada a mano (`src/servicios.ts`) de servicios gratuitos para developers: enlace de registro, si la página ofrece entrar con GitHub/Google (`oauth`; "no confirmado" si no se comprobó) y, si tienen MCP oficial en el catálogo, su conexión (leída de D1, solo lectura). La web la muestra en el desplegable "Servicios gratuitos para developers".
+- `local/server.ts` es un MCP stdio aparte que recuerda qué servicios tiene el usuario en `~/.catalogo-mcp/servicios.json` (`CATALOGO_MCP_DIR` lo cambia): solo servicio, estado (`registrado` o `conectado`) y fecha. Herramientas `mis_servicios` y `marcar(servicio, estado)` (`quitado` borra). No hace peticiones de red. Desde un clon del repositorio:
+
+      claude mcp add memoria -- npx tsx <ruta-al-repo>/local/server.ts
+
+  La IA debe llamar a `marcar` cuando el usuario confirme; no se puede verificar que de verdad se registró. Sin bloqueo entre procesos (gana la última escritura). Publicarlo en npm queda pendiente.
 
 ## Despliegue
 

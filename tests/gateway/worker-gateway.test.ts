@@ -70,10 +70,10 @@ const noWork = (e: any) => {
 const INVALIDA = { isError: true, text: "Entrada inválida." };
 
 describe("gateway tools", () => {
-  it("tools/list muestra buscar, explorar y llamar", async () => {
+  it("tools/list muestra buscar, explorar, llamar y servicios", async () => {
     const r = await jsonOf(await worker.fetch(rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" }), makeEnv() as any, ctx()));
     const tools = r.result.tools;
-    expect(tools.map((t: any) => t.name).sort()).toEqual(["buscar", "explorar", "llamar"]);
+    expect(tools.map((t: any) => t.name).sort()).toEqual(["buscar", "explorar", "llamar", "servicios"]);
     for (const t of tools) expect(t.description).toBeTruthy();
     expect(tools.find((t: any) => t.name === "llamar").inputSchema.properties.servidor.description).toMatch(/buscar/);
   });
