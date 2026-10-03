@@ -7,7 +7,8 @@ const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
 // identifier/version are untrusted and end up in a copy-pasted shell command: allow-list only.
-const SAFE = /^[@\w.\/:+~-]+$/;
+// Must not start with "-" (would be parsed as an option by npx/uvx/docker).
+const SAFE = /^[@\w][@\w.\/:+~-]*$/;
 
 function localCommand(p: any): string | undefined {
   const id = str(p?.identifier);

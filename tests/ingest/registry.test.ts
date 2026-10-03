@@ -61,6 +61,20 @@ describe("normalizeEntry", () => {
       }
     }
   });
+  it("identifier/version que empiezan por - (inyección de opciones) => null; normales se aceptan", () => {
+    for (const bad of ["--privileged", "-p", "-x/y"]) {
+      for (const field of ["identifier", "version"] as const) {
+        const raw = structuredClone(by("agency.kesey/pretrip"));
+        raw.server.packages = [{ registryType: "npm", identifier: "pkg", version: "1.0.0", [field]: bad }];
+        expect(normalizeEntry(raw), `${field}=${bad}`).toBeNull();
+      }
+    }
+    const raw = structuredClone(by("agency.kesey/pretrip"));
+    raw.server.packages = [{ registryType: "npm", identifier: "@scope/pkg", version: "1.2.3" }, ];
+    expect(normalizeEntry(raw)!.como_conectar).toBe("npx -y @scope/pkg@1.2.3");
+    raw.server.packages = [{ registryType: "oci", identifier: "ghcr.io/org/img:1.0" }];
+    expect(normalizeEntry(raw)!.como_conectar).toBe("docker run -i --rm ghcr.io/org/img:1.0");
+  });
   it("paquete inválido se salta y se usa el siguiente válido", () => {
     const raw = structuredClone(by("agency.kesey/pretrip"));
     raw.server.packages = [
