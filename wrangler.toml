@@ -3,7 +3,10 @@ main = "src/worker.ts"
 compatibility_date = "2026-10-01"
 
 [vars]
-GATEWAY_ENABLED = "1"
+# Pasarela (explorar/llamar): "1" la activa. Se publica apagada; ver README > Despliegue.
+GATEWAY_ENABLED = "0"
+# Ids del catálogo bloqueados en la pasarela (separados por comas); se tratan como desconocidos.
+GATEWAY_BLOQUEADOS = ""
 
 [[d1_databases]]
 binding = "DB"
