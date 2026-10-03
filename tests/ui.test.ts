@@ -56,6 +56,12 @@ describe("renderPagina", () => {
     expect(html).toMatch(/prefers-reduced-motion/);
     expect(html).toContain("Demasiadas búsquedas, espera un minuto");
   });
+  it("tarjeta de servicio: muestra el comando que se copia y no afirma 'Registro con email'", () => {
+    const f = script.slice(script.indexOf("function tarjetaServicio"), script.indexOf("async function cargarServicios"));
+    expect(f).toContain('el("pre", "code")');
+    expect(f).toContain("c.como_conectar");
+    expect(f).not.toContain("Registro con email");
+  });
   it("el script incrusta exactamente las funciones puras exportadas", () => {
     expect(script).toContain(slug.toString());
     expect(script).toContain(comando.toString());

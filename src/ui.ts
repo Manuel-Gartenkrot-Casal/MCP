@@ -247,9 +247,7 @@ function tarjetaServicio(s) {
   const top = el("div", "card-top");
   top.append(el("h3", "", nombre));
   li.append(top);
-  const badges = el("div", "badges");
-  badges.append(el("span", s.oauth ? "badge badge-acc" : "badge", s.oauth ? "Entrar con GitHub o Google" : "Registro con email"));
-  li.append(badges);
+  if (s.oauth) { const badges = el("div", "badges"); badges.append(el("span", "badge badge-acc", "Entrar con GitHub o Google")); li.append(badges); }
   const acciones = el("div", "fila");
   const a = el("a", "btn btn-pri", "Crear cuenta");
   a.setAttribute("aria-label", "Crear cuenta en " + nombre);
@@ -259,6 +257,9 @@ function tarjetaServicio(s) {
   let nota = false;
   if (c && typeof c.como_conectar === "string") {
     const cmd = c.tipo_conexion === "remoto" ? comando(nombre, c.como_conectar) : null;
+    const pre = el("pre", "code");
+    pre.append(el("code", "", cmd || c.como_conectar));
+    li.append(pre);
     acciones.append(cmd ? botonCopia("Copiar comando MCP", cmd, nombre) : botonCopia("Copiar conexión", c.como_conectar, nombre));
     nota = !cmd;
   }

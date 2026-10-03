@@ -66,4 +66,13 @@ describe("memoria local", () => {
     expect((await stat(archivo())).mode & 0o777).toBe(0o600);
     expect((await stat(dir)).mode & 0o777).toBe(0o700);
   });
+
+  it("llamadas paralelas a marcar no pierden entradas ni corrompen el archivo", async () => {
+    const ids = ["a", "b", "c", "d", "e", "f"];
+    for (let ronda = 0; ronda < 5; ronda++) {
+      await Promise.all(ids.map((servicio) => marcar(dir, { servicio: `${servicio}${ronda}`, estado: "registrado" })));
+    }
+    const r = await leer(dir);
+    expect(r).toHaveLength(ids.length * 5);
+  });
 });
