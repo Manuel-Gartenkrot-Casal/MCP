@@ -37,16 +37,17 @@ export class SesionDO extends DurableObject {
     const guardado = await st.get<string>("servidor");
     if (guardado !== undefined && guardado !== servidorId) return { ok: false, code: "sesion_otro_servidor" };
     try {
-      const sessionId = guardado === undefined
-        ? (await inicializar(url, this.fetchFn)).sessionId
-        : await st.get<string>("mcpSession");
-      const raw = await listarHerramientas({ url, sessionId }, this.fetchFn);
+      // Siempre se reinicializa: una explorar explícita recupera una sesión que el destino olvidó (no es renovación silenciosa).
+      const { sessionId, version } = await inicializar(url, this.fetchFn);
+      const raw = await listarHerramientas({ url, sessionId, version }, this.fetchFn);
       const tools = raw.map(toToolInfo).filter((t): t is ToolInfo => t !== null);
       // Solo ahora se persiste: un fallo previo no deja el token ligado a una sesión a medias.
       const ahora = await st.get<string>("servidor");
       if (ahora !== undefined && ahora !== servidorId) return { ok: false, code: "sesion_otro_servidor" };
       if (sessionId === undefined) await st.delete("mcpSession");
-      await st.put({ servidor: servidorId, tools, ultimoUso: Date.now(), ...(sessionId !== undefined && { mcpSession: sessionId }) });
+      if (version === undefined) await st.delete("version");
+      await st.put({ servidor: servidorId, tools, ultimoUso: Date.now(),
+        ...(sessionId !== undefined && { mcpSession: sessionId }), ...(version !== undefined && { version }) });
       await st.setAlarm(Date.now() + TTL_MS);
       return { ok: true, valor: tools };
     } catch (e) { return fallo(e); }
@@ -69,8 +70,8 @@ export class SesionDO extends DurableObject {
     if (!t) return { ok: false, code: "herramienta_inexistente" };
     if (t.marca !== "solo_lectura" && confirmar !== true) return { ok: false, code: "confirmar", marca: t.marca };
     try {
-      const sessionId = await st.get<string>("mcpSession");
-      const r = await llamarHerramienta({ url, sessionId }, herramienta, args, this.fetchFn);
+      const d = { url, sessionId: await st.get<string>("mcpSession"), version: await st.get<string>("version") };
+      const r = await llamarHerramienta(d, herramienta, args, this.fetchFn);
       if ((await st.get<string>("servidor")) === servidorId) await this.renovar(); // si la alarma borró todo, no dejar ultimoUso huérfano
       return { ok: true, valor: { ...r, marca: t.marca } };
     } catch (e) { return fallo(e); }

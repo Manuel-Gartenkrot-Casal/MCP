@@ -112,6 +112,14 @@ describe("errores", () => {
     }
   }
 
+  it("404 con Mcp-Session-Id enviado → sesion_expirada; sin sesión → destino_caido", async () => {
+    const { fn } = fake(() => new Response("gone", { status: 404 }));
+    expect(await codigo(listarHerramientas({ url: URL_D, sessionId: "S1" }, fn))).toBe("sesion_expirada");
+    expect(await codigo(llamarHerramienta({ url: URL_D, sessionId: "S1" }, "a", {}, fn))).toBe("sesion_expirada");
+    expect(await codigo(listarHerramientas({ url: URL_D }, fn))).toBe("destino_caido");
+    expect(await codigo(inicializar(URL_D, fn))).toBe("destino_caido");
+  });
+
   it("el mensaje de error no contiene texto del destino", async () => {
     const { fn } = fake(() => json({ jsonrpc: "2.0", id: 1, error: { message: "secreto" } }));
     try { await inicializar(URL_D, fn); } catch (e: any) { expect(e.message).not.toContain("secreto"); }
@@ -167,6 +175,38 @@ describe("cabeceras", () => {
   });
 });
 
+describe("versión de protocolo negociada", () => {
+  const conVersion = (v: unknown) => fake((c) => {
+    if (c.body.method === "initialize") return json(rpc({ protocolVersion: v }), { "Mcp-Session-Id": "S" });
+    if (c.body.method === "notifications/initialized") return new Response(null, { status: 202 });
+    return json(rpc({ tools: [] }, 2));
+  });
+  for (const v of ["2025-06-18", "2025-03-26", "2024-11-05"]) {
+    it(`${v} aceptada se usa en las siguientes llamadas`, async () => {
+      const { fn, calls } = conVersion(v);
+      const r = await inicializar(URL_D, fn);
+      expect(r).toEqual({ sessionId: "S", version: v });
+      await listarHerramientas({ url: URL_D, ...r }, fn);
+      expect((calls[0].init.headers as any)["MCP-Protocol-Version"]).toBe("2025-06-18");
+      for (const c of calls.slice(1)) expect((c.init.headers as any)["MCP-Protocol-Version"]).toBe(v);
+    });
+  }
+  for (const v of ["2099-01-01", "x\r\nX-Inyectada: 1", 5, undefined]) {
+    it(`${JSON.stringify(v)} desconocida → se queda 2025-06-18`, async () => {
+      const { fn, calls } = conVersion(v);
+      const r = await inicializar(URL_D, fn);
+      expect(r).toEqual({ sessionId: "S" });
+      await listarHerramientas({ url: URL_D, ...r }, fn);
+      for (const c of calls) expect((c.init.headers as any)["MCP-Protocol-Version"]).toBe("2025-06-18");
+    });
+  }
+  it("Destino con versión no permitida → 2025-06-18", async () => {
+    const { fn, calls } = conVersion(undefined);
+    await listarHerramientas({ url: URL_D, version: "zzz" }, fn);
+    expect((calls[0].init.headers as any)["MCP-Protocol-Version"]).toBe("2025-06-18");
+  });
+});
+
 describe("endurecimiento", () => {
   const largo = "a".repeat(257);
   for (const [n, v] of [["demasiado largo", largo], ["con espacio", "a b"], ["con caracteres no ASCII", "añ"]] as const) {
@@ -198,6 +238,37 @@ describe("endurecimiento", () => {
     const { fn } = fake(() => new Response(`data: ${JSON.stringify(rpc({ tools: [] }, 2))}\n\n`, { status: 200, headers: { "content-type": "Text/Event-Stream; charset=utf-8" } }));
     expect(await listarHerramientas({ url: URL_D }, fn)).toEqual([]);
   });
+  it("SSE que responde y sigue abierto: resuelve al llegar el id y cancela el stream", async () => {
+    let cancelado = false;
+    const enc = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(enc.encode(`event: ping\ndata: {"x":1}\n\n`));
+        c.enqueue(enc.encode(`data: ${JSON.stringify(rpc({ tools: [{ name: "pronto" }] }, 2))}\r\n`));
+        c.enqueue(enc.encode(`\r\n`)); // separador partido entre trozos; nunca se cierra
+      },
+      cancel() { cancelado = true; },
+    });
+    const { fn } = fake(() => new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    expect(await listarHerramientas({ url: URL_D }, fn)).toEqual([{ name: "pronto" }]);
+    expect(cancelado).toBe(true);
+  }, 2000);
+  it("SSE abierto sin id correcto respeta el tope de 256 KB", async () => {
+    let cancelado = false, leidos = 0;
+    const ev = new TextEncoder().encode(`data: ${JSON.stringify(rpc({ pad: "a".repeat(64 * 1024) }, 77))}\n\n`);
+    const stream = new ReadableStream<Uint8Array>({ pull(c) { leidos++; c.enqueue(ev); }, cancel() { cancelado = true; } });
+    const { fn } = fake(() => new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    expect(await codigo(listarHerramientas({ url: URL_D }, fn))).toBe("destino_caido");
+    expect(cancelado).toBe(true);
+    expect(leidos).toBeLessThan(6);
+  }, 2000);
+  it("notificación: no espera al cuerpo (stream SSE abierto no bloquea)", async () => {
+    let cancelado = false;
+    const { fn } = fake((c) => c.body.method === "initialize" ? json(rpc({}), { "Mcp-Session-Id": "S" })
+      : new Response(new ReadableStream({ cancel() { cancelado = true; } }), { status: 200, headers: { "content-type": "text/event-stream" } }));
+    expect(await inicializar(URL_D, fn)).toEqual({ sessionId: "S" });
+    expect(cancelado).toBe(true);
+  }, 2000);
   it("data multilínea se une con \n", async () => {
     const j = JSON.stringify(rpc({ tools: [{ name: "m" }] }, 2), null, 1).split("\n");
     const cuerpo = j.map((l) => `data: ${l}`).join("\n") + "\n\n";

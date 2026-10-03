@@ -34,6 +34,7 @@ function montar(extra?: (c: any) => Response | undefined) {
   return { d, st, calls };
 }
 const metodos = (calls: any[]) => calls.map((c) => c.body.method);
+const llamarD = (d: SesionDO, h: string) => d.llamar("srv", URL_D, h, {}, false);
 
 describe("explorar", () => {
   it("guarda sesión y herramientas, devuelve solo las de nombre válido", async () => {
@@ -47,12 +48,42 @@ describe("explorar", () => {
     expect(typeof st.data.get("ultimoUso")).toBe("number");
     expect(st.alarm()).toBeGreaterThan(Date.now() + TTL_MS - 5000);
   });
-  it("segunda explorar del mismo servidor reutiliza la sesión sin reinicializar", async () => {
-    const { d, calls } = montar();
+  // Cambiado (fix D): una explorar explícita siempre reinicializa y guarda la sesión nueva (recupera sesiones olvidadas por el destino).
+  it("segunda explorar del mismo servidor reinicializa y guarda la sesión nueva", async () => {
+    let n = 0;
+    const { d, st, calls } = montar((c) => c.body.method === "initialize" ? json(rpc({}, 1), { "Mcp-Session-Id": "S" + ++n }) : undefined);
     await d.explorar("srv", URL_D);
     await d.explorar("srv", URL_D);
-    expect(metodos(calls)).toEqual(["initialize", "notifications/initialized", "tools/list", "tools/list"]);
-    expect(calls[3].headers["Mcp-Session-Id"]).toBe("S1");
+    expect(metodos(calls)).toEqual(["initialize", "notifications/initialized", "tools/list", "initialize", "notifications/initialized", "tools/list"]);
+    expect(calls[5].headers["Mcp-Session-Id"]).toBe("S2");
+    expect(st.data.get("mcpSession")).toBe("S2");
+  });
+  it("reexplorar sin Mcp-Session-Id borra la sesión vieja", async () => {
+    let n = 0;
+    const { d, st } = montar((c) => c.body.method === "initialize" ? json(rpc({}, 1), n++ ? {} : { "Mcp-Session-Id": "S1" }) : undefined);
+    await d.explorar("srv", URL_D);
+    await d.explorar("srv", URL_D);
+    expect(st.data.has("mcpSession")).toBe(false);
+  });
+  it("sesión olvidada por el destino: llamar → sesion_expirada; explorar con el mismo token la recupera", async () => {
+    let n = 0;
+    const { d, calls } = montar((c) => {
+      if (c.body.method === "initialize") return json(rpc({}, 1), { "Mcp-Session-Id": "S" + ++n });
+      if (c.body.method === "tools/call" && c.headers["Mcp-Session-Id"] === "S1") return new Response("gone", { status: 404 });
+      return undefined;
+    });
+    await d.explorar("srv", URL_D);
+    expect(await llamarD(d, "leer")).toEqual({ ok: false, code: "sesion_expirada" });
+    expect((await d.explorar("srv", URL_D)).ok).toBe(true);
+    expect((await llamarD(d, "leer")).ok).toBe(true);
+    expect(calls.at(-1).headers["Mcp-Session-Id"]).toBe("S2");
+  });
+  it("guarda la versión negociada y la usa en llamar", async () => {
+    const { d, st, calls } = montar((c) => c.body.method === "initialize" ? json(rpc({ protocolVersion: "2025-03-26" }, 1), { "Mcp-Session-Id": "S1" }) : undefined);
+    await d.explorar("srv", URL_D);
+    expect(st.data.get("version")).toBe("2025-03-26");
+    await llamarD(d, "leer");
+    expect(calls.at(-1).headers["MCP-Protocol-Version"]).toBe("2025-03-26");
   });
   it("otro servidor → sesion_otro_servidor sin red", async () => {
     const { d, calls } = montar();
@@ -193,14 +224,18 @@ describe("concurrencia", () => {
     expect(st.data.get("mcpSession")).toBe("S1");
     expect((st.data.get("tools") as any[]).map((t) => t.nombre)).toEqual(["t1"]);
   });
-  it("dos explorar concurrentes del mismo servidor: una inicialización, la segunda reutiliza", async () => {
-    const { d, calls, gate } = conPuerta();
+  // Cambiado (fix D): la segunda explorar ya no reutiliza; se serializa y reinicializa (S2 queda guardada).
+  it("dos explorar concurrentes del mismo servidor: serializadas, la segunda reinicializa", async () => {
+    const { d, st, calls, gate } = conPuerta();
     const a = d.explorar("X", URL_D), b = d.explorar("X", URL_D);
-    await tick(); gate.ok();
+    await tick();
+    expect(calls.filter((c) => c.body.method === "initialize")).toHaveLength(1);
+    gate.ok();
     const [ra, rb]: any[] = await Promise.all([a, b]);
     expect(ra.ok && rb.ok).toBe(true);
-    expect(calls.filter((c) => c.body.method === "initialize")).toHaveLength(1);
-    expect(calls.at(-1).headers["Mcp-Session-Id"]).toBe("S1");
+    expect(calls.filter((c) => c.body.method === "initialize")).toHaveLength(2);
+    expect(calls.at(-1).headers["Mcp-Session-Id"]).toBe("S2");
+    expect(st.data.get("mcpSession")).toBe("S2");
   });
   it("un fallo de la llamada anterior no envenena la cola", async () => {
     const { d } = montar();
