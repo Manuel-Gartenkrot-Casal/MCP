@@ -39,9 +39,14 @@ export function toToolInfo(raw: RawTool): ToolInfo | null {
   }
 }
 
-function cabecera(sesion: string): string[] {
+/** Única forma de escribir el token en una salida: comprobado con regex, nunca texto de terceros. */
+export function lineaSesion(sesion: string): string {
   if (!/^[0-9a-f]{32}$/.test(sesion)) throw new Error("sesion inválida");
-  return [AVISO_GATEWAY, `sesion: ${sesion}`];
+  return `sesion: ${sesion}`;
+}
+
+function cabecera(sesion: string): string[] {
+  return [AVISO_GATEWAY, lineaSesion(sesion)];
 }
 
 export function formatExplorar(sesion: string, tools: ToolInfo[]): string {

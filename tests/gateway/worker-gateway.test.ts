@@ -13,7 +13,7 @@ const row = (o: any = {}) => ({ id: "a", nombre: "Alfa", descripcion: "d", url_i
   como_conectar: "https://destino.example/mcp", auth: "ninguna", incompleta: 0, actualizado: "2026-01-01T00:00:00Z", ...o });
 
 function makeEnv(o: { rows?: any[]; gateway?: string | undefined; limitExplorar?: boolean; limitLlamar?: boolean; throwLimiter?: boolean;
-  putFails?: boolean; resultText?: string; stubThrows?: boolean } = {}) {
+  putFails?: boolean; resultText?: string; stubThrows?: boolean; callStatus?: number; listStatus?: number } = {}) {
   const rows = o.rows ?? [row()];
   const fetchCalls: any[] = [];
   const fetchFn = (async (url: any, init: any) => {
@@ -22,8 +22,10 @@ function makeEnv(o: { rows?: any[]; gateway?: string | undefined; limitExplorar?
     switch (body.method) {
       case "initialize": return jres(rpcRes({}, 1), { "Mcp-Session-Id": "S1" });
       case "notifications/initialized": return new Response(null, { status: 202 });
-      case "tools/list": return jres(rpcRes({ tools: [{ name: "leer", annotations: { readOnlyHint: true } }, { name: "raro" }] }, 2));
-      default: return jres(rpcRes({ content: [{ type: "text", text: o.resultText ?? "hola" }], isError: false }, 3));
+      case "tools/list": if (o.listStatus) return new Response("x", { status: o.listStatus });
+        return jres(rpcRes({ tools: [{ name: "leer", annotations: { readOnlyHint: true } }, { name: "raro" }] }, 2));
+      default: if (o.callStatus) return new Response("x", { status: o.callStatus });
+        return jres(rpcRes({ content: [{ type: "text", text: o.resultText ?? "hola" }], isError: false }, 3));
     }
   }) as unknown as typeof fetch;
   const dos = new Map<string, SesionDO>();
@@ -126,18 +128,60 @@ describe("gateway tools", () => {
       const env: any = makeEnv();
       const r = await tool(env, name, { servidor: "a", herramienta: "leer", sesion: "ZZ" });
       expect(r).toEqual(INVALIDA);
-      expect(env.idFromName).not.toHaveBeenCalled();
+      noWork(env);
     }
   });
 
-  it("argumentos inválidos -> entrada_invalida sin red", async () => {
-    const bad: unknown[] = [[1], "s", null, 5];
+  // argumentos se publica como objeto: los no-objetos los rechaza la validación del SDK (antes de nuestro código).
+  it("argumentos no objeto -> error de validación del SDK sin D1/DO/red ni eco del valor", async () => {
+    const bad: unknown[] = [[1], "SECRETO-s", null, 5];
     for (const a of bad) {
       const env: any = makeEnv();
       const r = await tool(env, "llamar", { servidor: "a", herramienta: "leer", argumentos: a });
-      expect(r, JSON.stringify(a).slice(0, 20)).toEqual(INVALIDA);
-      expect(env.fetchCalls).toHaveLength(0); expect(env.get).not.toHaveBeenCalled();
+      expect(r.isError, JSON.stringify(a)).toBe(true);
+      expect(r.text).not.toContain("SECRETO");
+      noWork(env);
     }
+  });
+
+  it("tools/list publica argumentos como objeto", async () => {
+    const r = await jsonOf(await worker.fetch(rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" }), makeEnv() as any, ctx()));
+    const arg = r.result.tools.find((t: any) => t.name === "llamar").inputSchema.properties.argumentos;
+    expect(arg.type).toBe("object");
+  });
+
+  describe("llamar sin sesion devuelve el token también si falla tras ligar el DO", () => {
+    const ultima = (t: string) => t.split("\n").at(-1)!;
+    it("confirmar: token presente; reintento con confirmar:true sin reinicializar", async () => {
+      const env: any = makeEnv();
+      const r = await tool(env, "llamar", { servidor: "a", herramienta: "raro" });
+      expect(r.isError).toBe(true);
+      expect(r.text).toMatch(/confirmar: true/);
+      expect(ultima(r.text)).toMatch(/^sesion: [0-9a-f]{32}$/);
+      const tk = token(r.text);
+      const ok = await tool(env, "llamar", { servidor: "a", herramienta: "raro", sesion: tk, confirmar: true });
+      expect(ok.isError).toBe(false);
+      expect(env.fetchCalls.filter((c: any) => c.body.method === "initialize")).toHaveLength(1);
+    });
+    it("herramienta_inexistente: token presente", async () => {
+      const r = await tool(makeEnv(), "llamar", { servidor: "a", herramienta: "nada" });
+      expect(r.text).toMatch(/^La herramienta no existe en ese servidor\.\nsesion: [0-9a-f]{32}$/);
+    });
+    it("error del destino: token presente", async () => {
+      const r = await tool(makeEnv({ callStatus: 500 }), "llamar", { servidor: "a", herramienta: "leer" });
+      expect(r).toMatchObject({ isError: true });
+      expect(r.text).toMatch(/^El servidor remoto no está disponible\.\nsesion: [0-9a-f]{32}$/);
+    });
+    it("si falla el explorar interno no hay token", async () => {
+      const r = await tool(makeEnv({ listStatus: 500 }), "llamar", { servidor: "a", herramienta: "leer" });
+      expect(r).toEqual({ isError: true, text: "El servidor remoto no está disponible." });
+    });
+    it("con sesion explícita no se añade nada al error", async () => {
+      const env: any = makeEnv();
+      const tk = token((await tool(env, "explorar", { servidor: "a" })).text);
+      expect(await tool(env, "llamar", { servidor: "a", herramienta: "nada", sesion: tk }))
+        .toEqual({ isError: true, text: "La herramienta no existe en ese servidor." });
+    });
   });
 
   it("validarLlamar rechaza BigInt y circulares (JSON no los transporta)", () => {
@@ -153,7 +197,7 @@ describe("gateway tools", () => {
     const env: any = makeEnv();
     const r = await tool(env, "llamar", { servidor: "a", herramienta: "a b;" });
     expect(r).toEqual(INVALIDA);
-    expect(env.fetchCalls).toHaveLength(0);
+    noWork(env);
   });
 
   it("herramienta sin marca requiere confirmar; con confirmar:true corre", async () => {

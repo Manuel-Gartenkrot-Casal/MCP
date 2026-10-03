@@ -4,7 +4,7 @@ import { GatewayError } from "./types";
 import type { Marca, GwCode } from "./types";
 import type { SesionDO } from "./sesion";
 import { validarDestino } from "./url";
-import { formatExplorar, formatResultadoLlamada } from "./formato";
+import { formatExplorar, formatResultadoLlamada, lineaSesion } from "./formato";
 import { logLlamada } from "../log";
 
 export interface GwEnv {
@@ -29,7 +29,8 @@ export function validarLlamar(herramienta: string, argumentos: unknown): boolean
   try { return JSON.stringify(argumentos).length <= 16384; } catch { return false; }
 }
 
-type Fallo = { code: GwCode; marca?: Marca };
+// conToken: el DO ya quedó ligado al token nuevo (llamar sin sesion), así que el error lo devuelve para reintentar.
+type Fallo = { code: GwCode; marca?: Marca; conToken?: boolean };
 type Hecho = { out: ReturnType<typeof text>; resultado: string; marca?: Marca };
 
 export function registerGateway(server: McpServer, env: GwEnv, ctx: ExecutionContext, ip: string, host: string) {
@@ -64,7 +65,8 @@ export function registerGateway(server: McpServer, env: GwEnv, ctx: ExecutionCon
         const r = await run(a, url, env.SESIONES.get(env.SESIONES.idFromName(token)), token);
         if ("code" in r) {
           log(r.code, r.marca);
-          return text(new GatewayError(r.code, r.marca).message, true);
+          const msg = new GatewayError(r.code, r.marca).message;
+          return text(r.conToken ? `${msg}\n${lineaSesion(token)}` : msg, true);
         }
         log(r.resultado, r.marca);
         return r.out;
@@ -96,7 +98,7 @@ export function registerGateway(server: McpServer, env: GwEnv, ctx: ExecutionCon
       inputSchema: {
         servidor: z.string().min(1).max(128).describe("Id del catálogo (campo `id` de un resultado de `buscar`)"),
         herramienta: z.string().max(200).describe("Nombre de la herramienta, tal como la devuelve `explorar`."),
-        argumentos: z.unknown().optional().describe("Objeto con los argumentos de la herramienta (máximo 16 KB); por defecto {}."),
+        argumentos: z.record(z.string(), z.unknown()).optional().describe("Objeto con los argumentos de la herramienta (máximo 16 KB); por defecto {}."),
         sesion: z.string().max(100).optional().describe("Token de sesión devuelto por `explorar` o `llamar`; si falta se explora el servidor y se crea uno."),
         confirmar: z.boolean().optional().describe("Confirmación explícita para herramientas que no están marcadas como de solo lectura (destructivas o sin declarar). Sin ella se rechazan."),
       },
@@ -107,7 +109,7 @@ export function registerGateway(server: McpServer, env: GwEnv, ctx: ExecutionCon
         if (!e.ok) return e;
       }
       const r = (await stub.llamar(a.servidor, url, a.herramienta, (a.argumentos ?? {}) as Record<string, unknown>, a.confirmar === true)) as Awaited<ReturnType<SesionDO["llamar"]>>;
-      if (!("valor" in r)) return r;
+      if (!("valor" in r)) return { ...r, conToken: a.sesion === undefined };
       const f = formatResultadoLlamada(token, r.valor);
       return { out: text(f.texto, f.isError), resultado: r.valor.isError ? "error_destino" : "ok", marca: r.valor.marca };
     }),
