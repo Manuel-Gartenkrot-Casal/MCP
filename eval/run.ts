@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { buscar, type SearchDeps } from "../src/search/buscar";
+import type { Entry } from "../src/types";
 import { embedWorkersAI } from "../src/ingest/cloudflare";
-import { evaluate, formatReport, type Case, type Hit } from "./evaluate";
+import { parseRerankResponse } from "../src/search/rerank";
+import { evaluarModos, formatComparacion, type Case, type Hit } from "./evaluate";
 
 const API = "https://api.cloudflare.com/client/v4/accounts";
 
@@ -26,6 +28,54 @@ export function vectorizeQuery(cfg: { accountId: string; index: string; token: s
     if (!res.ok || body.success !== true) throw new Error(`Vectorize query failed (HTTP ${res.status})`);
     return (body.result?.matches ?? []).map((m: any) => ({ id: m.id, score: m.score }));
   };
+}
+
+// Docs: https://developers.cloudflare.com/workers-ai/models/bge-reranker-base/
+// POST /accounts/{id}/ai/run/@cf/baai/bge-reranker-base, body {query, contexts:[{text}]}; REST wraps the model output in `result`.
+// Same sigmoid/shape handling as the Worker (parseRerankResponse); the raw-vs-[0,1] shape is UNVERIFIED until the first real run.
+export function rerankWorkersAI(cfg: { accountId: string; token: string }, fetchFn: typeof fetch = fetch): NonNullable<SearchDeps["rerank"]> {
+  return async (query, textos) => {
+    const res = await fetchFn(`${API}/${cfg.accountId}/ai/run/@cf/baai/bge-reranker-base`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query, contexts: textos.map((text) => ({ text })) }),
+    });
+    const body: any = await res.json().catch(() => ({}));
+    if (!res.ok || body.success !== true) throw new Error(`Rerank failed (HTTP ${res.status})`);
+    return parseRerankResponse(body.result, textos.length);
+  };
+}
+
+interface CollectDeps {
+  embed: SearchDeps["embed"];
+  getEntries: SearchDeps["getEntries"];
+  query: (v: number[], n: number) => Promise<Hit[]>;
+  rerank: NonNullable<SearchDeps["rerank"]>;
+}
+
+// Runs buscar twice for one case sharing the same raw hits and D1 reads: once without rerank (vector hits),
+// once with it. Reranked hits = the surviving candidates (same order buscar builds) with their rerank scores.
+// A failed rerank throws: buscar would silently fall back and the "reranked" column would be vector order.
+export async function collect(d: CollectDeps, necesidad: string): Promise<{ vector: Hit[]; reranked: Hit[] }> {
+  let vector: Hit[] = [];
+  let entries: Entry[] = [];
+  const base: SearchDeps = {
+    embed: d.embed,
+    nearest: async (v, n) => (vector = await d.query(v, n)),
+    getEntries: async (ids) => (entries = await d.getEntries(ids)),
+  };
+  const opts = { umbral: 0, n: 50 };
+  await buscar(base, necesidad, {}, opts);
+  let scores: number[] | null = null;
+  await buscar(
+    { ...base, nearest: async () => vector, getEntries: async () => entries,
+      rerank: async (q, t) => (scores = await d.rerank(q, t)) },
+    necesidad, {}, opts,
+  );
+  const have = new Set(entries.map((e) => e.id));
+  const ids = [...vector].sort((a, b) => b.score - a.score).filter((h) => have.has(h.id)).map((h) => h.id);
+  if (ids.length && (!scores || (scores as number[]).length !== ids.length)) throw new Error("rerank falló para una consulta del eval");
+  return { vector, reranked: ids.map((id, i) => ({ id, score: (scores as unknown as number[])[i] })).sort((a, b) => b.score - a.score) };
 }
 
 // D1 REST read (same endpoint/shape as d1RestStore; ids chunked under D1's 100-parameter limit).
@@ -56,20 +106,17 @@ export async function main(): Promise<void> {
   const embed = async (t: string) => (await embedBatch([t]))[0];
   const getEntries = d1GetEntries({ accountId, databaseId, token });
   const cases: Case[] = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "casos.json"), "utf8"));
-  const results: Hit[][] = [];
+  const rerank = rerankWorkersAI({ accountId, token });
+  const vector: Hit[][] = [], reranked: Hit[][] = [];
   for (const c of cases) {
-    let hits: Hit[] = [];
-    // buscar drops ids, so capture the raw hits; umbral 0 keeps every score visible.
-    await buscar(
-      { embed, getEntries, nearest: async (v, n) => (hits = await query(v, n)) },
-      c.necesidad, {}, { umbral: 0, n: 20 },
-    );
-    results.push(hits);
+    const r = await collect({ embed, getEntries, query, rerank }, c.necesidad);
+    vector.push(r.vector);
+    reranked.push(r.reranked);
   }
   // Which esperado ids are in D1 at all (parametrized, chunked <= 100 ids): tells "not indexed" from "ranked low".
   const esperados = [...new Set(cases.flatMap((c) => (c.esperado ? [c.esperado] : [])))];
   const indexados = new Set((await getEntries(esperados)).map((e) => e.id));
-  console.log(formatReport(evaluate(cases, results, undefined, indexados)));
+  console.log(formatComparacion(evaluarModos(cases, vector, reranked, indexados)));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

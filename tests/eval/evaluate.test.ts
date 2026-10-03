@@ -77,3 +77,46 @@ describe("evaluate", () => {
     expect(formatReport(r)).toContain("Ningún umbral");
   });
 });
+
+import { evaluarModos, formatComparacion, UMBRALES_RERANK } from "../../eval/evaluate";
+
+const idioma = (id: string, i: "es" | "en"): Case => ({ ...real(id), idioma: i });
+const filler = [h("x1", 0.9), h("x2", 0.8), h("x3", 0.7), h("x4", 0.6), h("x5", 0.5)];
+
+describe("evaluate por idioma", () => {
+  it("aciertos por idioma sobre casos reales indexados", () => {
+    const r = evaluate(
+      [idioma("a", "es"), idioma("b", "es"), idioma("c", "en"), { ...absurd, idioma: "es" }],
+      [[h("a", 0.9)], [...filler, h("b", 0.4)], [h("c", 0.9)], []],
+    );
+    expect(r.porIdioma).toEqual({ es: { aciertos: 1, reales: 2 }, en: { aciertos: 1, reales: 1 } });
+  });
+  it("casos sin idioma no crean grupos", () => {
+    expect(evaluate([real("a")], [[h("a", 0.9)]]).porIdioma).toEqual({});
+  });
+});
+
+describe("evaluarModos / formatComparacion", () => {
+  const cases = [idioma("a", "es"), idioma("b", "en"), { ...absurd, idioma: "en" as const }];
+  const vec = [[...filler, h("a", 0.4)], [h("b", 0.8)], [h("z", 0.6)]];
+  const rer = [[h("a", 0.95)], [h("b", 0.7)], [h("z", 0.15)]];
+  const m = evaluarModos(cases, vec, rer);
+  it("cada modo con su barrido", () => {
+    expect(m.vector.aciertos).toBe(1);
+    expect(m.reranked.aciertos).toBe(2);
+    expect(m.vector.barrido.map((b) => b.umbral)).toEqual([0.3, 0.4, 0.5, 0.6, 0.7]);
+    expect(m.reranked.barrido.map((b) => b.umbral)).toEqual(UMBRALES_RERANK);
+    expect(UMBRALES_RERANK).toEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]);
+    expect(m.reranked.recomendado).toBe(0.7); // mejor 0.7 conserva a y b; el absurdo (0.15) se rechaza desde 0.2
+  });
+  it("el informe muestra ambos modos, idiomas, fallos y recomendación", () => {
+    const out = formatComparacion(m);
+    expect(out).toContain("SOLO VECTOR");
+    expect(out).toContain("CON RERANKER");
+    expect(out).toContain("es 0/1");
+    expect(out).toContain("en 1/1");
+    expect(out).toContain("es 1/1");
+    expect(out).toContain('FALLO "n a" -> a: rank 6, score 0.400');
+    expect(out).toContain("Umbral recomendado: 0.7");
+  });
+});

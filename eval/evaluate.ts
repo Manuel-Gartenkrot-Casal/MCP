@@ -1,6 +1,7 @@
-export interface Case { necesidad: string; esperado: string | null }
+export interface Case { necesidad: string; esperado: string | null; idioma?: "es" | "en" }
 export interface Hit { id: string; score: number }
 export const UMBRALES = [0.3, 0.4, 0.5, 0.6, 0.7];
+export const UMBRALES_RERANK = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
 const TOP = 5;
 
 export interface Report {
@@ -13,6 +14,7 @@ export interface Report {
   fallos: { necesidad: string; esperado: string; rank: number | null; score: number | null }[];
   barrido: { umbral: number; reales: number; absurdasRechazadas: number }[];
   absurdas: number;
+  porIdioma: Record<string, { aciertos: number; reales: number }>; // real cases per case.idioma
   recomendado: number | null;
 }
 
@@ -44,8 +46,15 @@ export function evaluate(cases: Case[], results: Hit[][], umbrales = UMBRALES, i
     absurdasRechazadas: absurd.filter((r) => !r.length || r[0].score < umbral).length,
   }));
   const ok = barrido.filter((b) => b.reales === aciertos && b.absurdasRechazadas === absurd.length);
+  const porIdioma: Report["porIdioma"] = {};
+  for (const x of real) {
+    if (!x.c.idioma) continue;
+    const g = (porIdioma[x.c.idioma] ??= { aciertos: 0, reales: 0 });
+    g.reales++;
+    if (hit(x)) g.aciertos++;
+  }
   return {
-    reales: real.length, aciertos,
+    reales: real.length, aciertos, porIdioma,
     porcentaje: real.length ? (100 * aciertos) / real.length : 0,
     indexadas,
     porcentajeIndexadas: indexadas ? (100 * aciertos) / indexadas : 0,
@@ -60,6 +69,8 @@ export function formatReport(r: Report): string {
     `Top-${TOP}: ${r.aciertos}/${r.reales} (${r.porcentaje.toFixed(0)}%) de todos; ` +
       `${r.aciertos}/${r.indexadas} indexados (${r.porcentajeIndexadas.toFixed(0)}%)`,
   ];
+  const idiomas = Object.entries(r.porIdioma).sort(([a], [b]) => a.localeCompare(b));
+  if (idiomas.length) L.push("Por idioma: " + idiomas.map(([k, g]) => `${k} ${g.aciertos}/${g.reales}`).join(", "));
   for (const n of r.noIndexados) L.push(`  NO INDEXADO "${n.necesidad}" -> ${n.esperado} (no está en D1)`);
   for (const f of r.fallos)
     L.push(`  FALLO "${f.necesidad}" -> ${f.esperado}: ${f.rank === null ? "ausente" : `rank ${f.rank}, score ${f.score!.toFixed(3)}`}`);
@@ -71,3 +82,17 @@ export function formatReport(r: Report): string {
     : `Umbral recomendado: ${r.recomendado}`);
   return L.join("\n");
 }
+
+export interface Modos { vector: Report; reranked: Report }
+
+// vector[i] / reranked[i] = raw hits for cases[i] in each mode. The vector sweep keeps UMBRALES;
+// the reranked sweep uses UMBRALES_RERANK (its scores are sigmoid outputs spread over (0,1)).
+export function evaluarModos(cases: Case[], vector: Hit[][], reranked: Hit[][], indexados?: Set<string>): Modos {
+  return {
+    vector: evaluate(cases, vector, UMBRALES, indexados),
+    reranked: evaluate(cases, reranked, UMBRALES_RERANK, indexados),
+  };
+}
+
+export const formatComparacion = (m: Modos): string =>
+  ["== SOLO VECTOR ==", formatReport(m.vector), "", "== CON RERANKER ==", formatReport(m.reranked)].join("\n");
