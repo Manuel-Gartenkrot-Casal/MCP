@@ -37,4 +37,4 @@ jobs:
           CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
           CF_VECTORIZE_INDEX: ${{ secrets.CF_VECTORIZE_INDEX }}
           FORCE_PRUNE: ${{ inputs.force_prune && '1' || '' }}
-          REINDEX: ${{ (startsWith(github.ref_name, 'reindex-') || inputs.reindex) && '1' || '' }}
+          REINDEX: ${{ (startsWith(github.ref, 'refs/tags/reindex-') || inputs.reindex) && '1' || '' }}

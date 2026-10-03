@@ -4,9 +4,8 @@ on:
     tags:
       - "eval-*"
   workflow_dispatch:
-# write access is used ONLY by the publish step (automatic GITHUB_TOKEN, push of the `resultados` branch)
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: eval
   cancel-in-progress: false
@@ -14,8 +13,12 @@ jobs:
   eval:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,14 +34,32 @@ jobs:
           CF_VECTORIZE_INDEX: ${{ secrets.CF_VECTORIZE_INDEX }}
       - name: Job summary
         run: cat resultados/*.md | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resultados
+          path: resultados/
+          if-no-files-found: error
+  publicar:
+    needs: eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # only this job can write; it never sees the Cloudflare secrets
+    permissions:
+      contents: write
+    concurrency:
+      group: resultados
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: resultados
+          path: ${{ runner.temp }}/resultados
       - name: Publish results branch
         run: |
           out="$RUNNER_TEMP/resultados"
-          mkdir -p "$out"
-          cp resultados/* "$out"/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm -rf resultados
           if git ls-remote --exit-code --heads origin resultados >/dev/null; then
             # keep earlier results: build on top of the existing branch (fast-forward push)
             git fetch --depth=1 origin resultados

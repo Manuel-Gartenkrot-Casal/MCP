@@ -5,9 +5,8 @@ on:
       - "experimento-*"
       - "completo-*"
   workflow_dispatch:
-# write access is used ONLY by the publish step (automatic GITHUB_TOKEN, push of the `resultados` branch)
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: experimento
   cancel-in-progress: false
@@ -15,8 +14,12 @@ jobs:
   experimento:
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -26,18 +29,36 @@ jobs:
         env:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          # completo-* tags: whole registry as corpus; anything else: the 4,500 indexed today
-          EXPERIMENTO_DOCS: ${{ startsWith(github.ref_name, 'completo-') && 'todos' || '' }}
+          # completo-* tags: whole registry as corpus; anything else: the 4,500 docs of experiment 1
+          EXPERIMENTO_DOCS: ${{ startsWith(github.ref, 'refs/tags/completo-') && 'todos' || '' }}
       - name: Job summary
         run: cat resultados/*.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resultados
+          path: resultados/
+          if-no-files-found: error
+  publicar:
+    needs: experimento
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # only this job can write; it never sees the Cloudflare secrets
+    permissions:
+      contents: write
+    concurrency:
+      group: resultados
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: resultados
+          path: ${{ runner.temp }}/resultados
       - name: Publish results branch
         run: |
           out="$RUNNER_TEMP/resultados"
-          mkdir -p "$out"
-          cp resultados/* "$out"/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm -rf resultados
           if git ls-remote --exit-code --heads origin resultados >/dev/null; then
             # keep earlier results: build on top of the existing branch (fast-forward push)
             git fetch --depth=1 origin resultados
