@@ -197,6 +197,41 @@ describe("poda de entradas que salen del cupo", () => {
     expect(r.podadas).toBe(5);
     expect(f.rows.size).toBe(5);
   });
+  describe("guarda de poda por obsoletas (> 50% de lo almacenado)", () => {
+    const ten = Array.from({ length: 10 }, (_, i) => mk("s" + i));
+    const fresh = (n: number) => Array.from({ length: n }, (_, i) => mk("n" + i, { actualizado: "2026-05-01" }));
+    it("exactamente 50% obsoletas => poda", async () => {
+      const f = fake(ten, { maxVectors: 10 });
+      await runIngest(f.deps);
+      f.deps.fetchEntries = async () => [...ten.slice(0, 5), ...fresh(5)];
+      const r = await runIngest(f.deps);
+      expect(r.podadas).toBe(5);
+      expect(f.rows.size).toBe(10);
+    });
+    it("un poco más del 50% obsoletas => no poda y avisa", async () => {
+      const logs: string[] = [];
+      const f = fake(ten, { maxVectors: 20, log: (m) => logs.push(m) });
+      await runIngest(f.deps);
+      f.deps.fetchEntries = async () => [...ten.slice(0, 4), ...fresh(4)];
+      const r = await runIngest(f.deps);
+      expect(r.podadas).toBe(0);
+      expect(f.ops).toEqual([]);
+      expect(logs.some((l) => /aviso.*poda/i.test(l))).toBe(true);
+    });
+    it("con la guarda activa nunca se supera maxVectors: el exceso va a fuera_de_cupo", async () => {
+      const logs: string[] = [];
+      const f = fake(ten, { maxVectors: 12, log: (m) => logs.push(m) });
+      await runIngest(f.deps);
+      f.deps.fetchEntries = async () => [...ten.slice(0, 4), ...fresh(6)];
+      const r = await runIngest(f.deps);
+      expect(r.podadas).toBe(0);
+      expect(r.nuevas).toBe(2);
+      expect(r.fuera_de_cupo).toBe(4);
+      expect(f.rows.size).toBe(12);
+      expect(f.vectors).toHaveLength(12);
+      expect(logs.some((l) => /cupo/i.test(l))).toBe(true);
+    });
+  });
   it("corrida repetida es idempotente", async () => {
     const f = fake(five, { maxVectors: 5 });
     await runIngest(f.deps);

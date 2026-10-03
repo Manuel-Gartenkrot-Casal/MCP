@@ -44,28 +44,38 @@ export async function runIngest(
   if (valid.length < all.length) deps.log(`excluidas ${all.length - valid.length} entradas con id de más de ${MAX_ID_BYTES} bytes`);
   const ranked = rankEntries(valid);
   const kept = ranked.slice(0, max);
-  const fuera_de_cupo = ranked.length - kept.length;
+  let fuera_de_cupo = ranked.length - kept.length;
 
   // Prune what dropped out of the cap (stored - kept) before upserting, so Vectorize never holds
   // more than `max`. Vectors first, then rows: a failure throws and leaves rows to retry next run.
   // Guard: a tiny/empty registry response (garbled fetch) must not wipe the index.
   const stored = await deps.store.listIds();
   let podadas = 0;
-  if (all.length === 0 || all.length < stored.length * 0.5) {
-    deps.log(`aviso: registro con ${all.length} entradas frente a ${stored.length} almacenadas; se omite la poda`);
-  } else {
-    const keptIds = new Set(kept.map((e) => e.id));
-    const stale = stored.filter((id) => !keptIds.has(id));
-    if (stale.length) {
-      await deps.deleteVectors(stale);
-      await deps.store.deleteIds(stale);
-      podadas = stale.length;
-    }
+  const keptIds = new Set(kept.map((e) => e.id));
+  const stale = stored.filter((id) => !keptIds.has(id));
+  // Second guard: a partial fetch that passed the raw-count guard must not delete most of the index.
+  const pruneSkipped = all.length === 0 || all.length < stored.length * 0.5 || stale.length > stored.length * 0.5;
+  if (pruneSkipped) {
+    deps.log(`aviso: registro con ${all.length} entradas, ${stale.length} de ${stored.length} almacenadas quedarían obsoletas; se omite la poda`);
+  } else if (stale.length) {
+    await deps.deleteVectors(stale);
+    await deps.store.deleteIds(stale);
+    podadas = stale.length;
   }
 
   const existing = await deps.store.getActualizados(kept.map((e) => e.id));
-  const todo = kept.filter((e) => needsEmbedding(existing.get(e.id), e));
+  let todo = kept.filter((e) => needsEmbedding(existing.get(e.id), e));
   const omitidas = kept.length - todo.length;
+  if (pruneSkipped) {
+    // Nothing was pruned, so stored + new entries must still fit in the index.
+    let room = Math.max(0, max - stored.length);
+    const fit = todo.filter((e) => existing.has(e.id) || room-- > 0);
+    if (fit.length < todo.length) {
+      deps.log(`aviso: ${todo.length - fit.length} entradas nuevas fuera de cupo (sin poda, máximo ${max})`);
+      fuera_de_cupo += todo.length - fit.length;
+      todo = fit;
+    }
+  }
   let nuevas = 0, fallidas = 0;
   for (let i = 0; i < todo.length; i += BATCH) {
     const batch = todo.slice(i, i + BATCH);
