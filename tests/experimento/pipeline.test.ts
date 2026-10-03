@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runExperimento, embedModelo, type Config } from "../../src/experimento/pipeline";
+import { runExperimento, embedModelo, seleccionarDocs, configsPara, type Config } from "../../src/experimento/pipeline";
 import type { Entry } from "../../src/types";
 
 const TOKEN = "SECRET-TOKEN-XYZ";
@@ -85,5 +85,34 @@ describe("runExperimento", () => {
     expect(out.md).toContain("| prompt | 3 |");
     for (const str of [out.json, out.md, ...logs]) expect(str).not.toContain(TOKEN);
     expect(s.calls.every((c) => c.auth === `Bearer ${TOKEN}`)).toBe(true);
+  });
+});
+
+describe("modo completo", () => {
+  const long = entry("x".repeat(65), "Long", "d");
+  it("seleccionarDocs: descarta ids de mas de 64 bytes; top recorta, todos no", () => {
+    const all = [long, ...entries];
+    expect(seleccionarDocs(all, "todos").map((e) => e.id).sort()).toEqual(["a", "b", "c"]);
+    expect(seleccionarDocs(all, "top", 2)).toHaveLength(2);
+    expect(seleccionarDocs(all, "top")).toHaveLength(3);
+  });
+  it("configsPara: completo = solo gemma-plain con dims 768,256,192,128,96", () => {
+    const c = configsPara("todos");
+    expect(c.map((x) => x.nombre)).toEqual(["gemma-plain"]);
+    expect(c[0].dims).toEqual([768, 256, 192, 128, 96]);
+    expect(configsPara("top")).toHaveLength(3);
+  });
+  it("documentos se embeben una sola vez y se derivan todas las dims", async () => {
+    const s = fakeFetch();
+    const cfg1: Config = { ...configs[1], nombre: "gemma-plain", dims: [DIMS, 3, 2], doc: (e) => e.nombre, query: (q) => q };
+    const out = await runExperimento({ accountId: "a", token: TOKEN, fetchFn: s.f, sleep: noSleep, entries, cases, configs: [cfg1], modo: "todos" });
+    expect(s.calls.flatMap((c) => c.body.text).filter((t: string) => t === "Alpha")).toHaveLength(1);
+    expect(out.reporte.modo).toBe("completo");
+    expect(out.reporte.configs[0].resultados.map((r) => r.dim)).toEqual([DIMS, 3, 2]);
+  });
+  it("fallo persistente nombra el lote", async () => {
+    const bad = (async () => json({ success: false, errors: [{ message: "boom" }] }, 400)) as typeof fetch;
+    await expect(embedModelo({ accountId: "a", token: TOKEN }, "m", DIMS, ["a", "b", "c"], 1, bad, noSleep, () => {}))
+      .rejects.toThrow(/lote 1\/3/);
   });
 });

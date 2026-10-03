@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { truncateNormalize, cosineScores, evaluar, renderMarkdown, type Reporte } from "../../src/experimento/metricas";
+import { truncateNormalize, cosineScores, evaluar, renderMarkdown, cuantil, capacidad, type Reporte } from "../../src/experimento/metricas";
 
 const norm = (v: ArrayLike<number>) => Math.sqrt(Array.from(v).reduce((s, x) => s + x * x, 0));
 
@@ -91,5 +91,32 @@ describe("renderMarkdown", () => {
     expect(md).toContain("q3");
     expect(md).toMatch(/neurons.*no informad/i);
     expect(renderMarkdown(rep)).toBe(md);
+  });
+});
+
+describe("cuantil / capacidad", () => {
+  it("interpolacion lineal", () => {
+    expect(cuantil([5, 1, 3, 2, 4], 0.5)).toBe(3);
+    expect(cuantil([1, 2, 3, 4, 5], 0.1)).toBeCloseTo(1.4, 9);
+    expect(cuantil([7], 0.9)).toBe(7);
+  });
+  it("vectores que caben en 5M dims y cobertura", () => {
+    expect(capacidad(128, 38000)).toEqual({ vectores: 39062, cobertura: 1 });
+    const c = capacidad(768, 38000);
+    expect(c.vectores).toBe(6510);
+    expect(c.cobertura).toBeCloseTo(6510 / 38000, 9);
+  });
+  it("evaluar da p10/p50/p90 de reales y los mejores de las absurdas", () => {
+    expect(r.resumen.p50MejorReal).toBeCloseTo(r.resumen.medianaMejorReal, 9);
+    expect(r.resumen.p10MejorReal).toBeLessThanOrEqual(r.resumen.p90MejorReal);
+    expect(r.resumen.mejoresAbsurdas).toHaveLength(1);
+  });
+  it("markdown completo: capacidad, aviso de bge-m3 y numero de documentos", () => {
+    const md = renderMarkdown({ fecha: "2026-01-01T00:00:00.000Z", modo: "completo", documentos: 38000, consultas: 4,
+      configs: [{ nombre: "gemma-plain", modelo: "m", dimsNativas: 2, neuronas: 3, resultados: [{ dim: 128, ...r }] }] });
+    expect(md).toContain("# Experimento completo");
+    expect(md).toContain("| 128 | 39062 | 38000 | 100%");
+    expect(md).toMatch(/bge-m3 no se re-embebió/);
+    expect(md).toContain("p10");
   });
 });
