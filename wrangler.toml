@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [vars]
 # Pasarela (explorar/llamar): "1" la activa. Se publica apagada; ver README > Despliegue.
-GATEWAY_ENABLED = "0"
+GATEWAY_ENABLED = "1"
 # Ids del catálogo bloqueados en la pasarela (separados por comas); se tratan como desconocidos.
 GATEWAY_BLOQUEADOS = ""
 
