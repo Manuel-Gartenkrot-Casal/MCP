@@ -6,6 +6,10 @@ const html = renderPagina("NONCE_abc-123");
 const script = html.match(/<script nonce="NONCE_abc-123">([\s\S]*?)<\/script>/)![1];
 
 describe("renderPagina", () => {
+  it("la cobertura no cita un número de servidores que quede obsoleto", () => {
+    expect(html).not.toContain("4.500");
+    expect(html).toContain("El catálogo indexa los servidores remotos y locales del registro oficial MCP.");
+  });
   it("un único <script> y <style>, ambos con el nonce", () => {
     expect(html.match(/<script/g)!.length).toBe(1);
     expect(html.match(/<style/g)!.length).toBe(1);

@@ -309,7 +309,7 @@ export function renderPagina(nonce: string): string {
 </main>
 
 <footer>
-  <p>Los nombres y descripciones vienen del registro oficial de MCP: son textos de terceros, no verificados. El catálogo indexa unos 4.500 servidores.</p>
+  <p>Los nombres y descripciones vienen del registro oficial de MCP: son textos de terceros, no verificados. El catálogo indexa los servidores remotos y locales del registro oficial MCP.</p>
   <p><a href="https://github.com/Manuel-Gartenkrot-Casal/MCP" rel="noopener noreferrer">Código fuente en GitHub</a></p>
 </footer>
 </div>
