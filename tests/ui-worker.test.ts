@@ -262,3 +262,14 @@ describe("/mcp sin cambios", () => {
     expect(((await r.json()) as any).error.code).toBe(-32600);
   });
 });
+
+describe("sección de servicios en la página", () => {
+  it("<details id=servicios>, script con /api/servicios y CSP sin connect-src nuevos", async () => {
+    const r = await worker.fetch(new Request("https://w.example/", { headers: { "CF-Connecting-IP": "9.9.9.9" } }), makeEnv() as any, ctx());
+    const html = await r.text();
+    expect(html).toContain('<details id="servicios"');
+    expect(html).toContain('"/api/servicios"');
+    expect(r.headers.get("content-security-policy")).toContain("connect-src 'self'; img-src 'none'");
+    expect(html).not.toMatch(/innerHTML/);
+  });
+});

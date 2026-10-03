@@ -32,7 +32,10 @@ describe("renderPagina", () => {
     for (const bad of ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function", "Function("])
       expect(html, bad).not.toContain(bad);
     expect(script).toContain("textContent");
-    expect(script).not.toMatch(/\.href\s*=|\.src\s*=|setAttribute\(\s*["'](href|src|on)/);
+    // Única excepción: el enlace "Crear cuenta" usa registro_url de NUESTRA lista curada (no del registro de terceros), solo si es https.
+    const enlace = 'if (String(s.registro_url).startsWith("https://")) { a.href = s.registro_url;';
+    expect(script).toContain(enlace);
+    expect(script.replace(enlace, "")).not.toMatch(/\.href\s*=|\.src\s*=|setAttribute\(\s*["'](href|src|on)/);
   });
   it("llama a /api/buscar con URL relativa y POST JSON", () => {
     expect(script).toContain('fetch("/api/buscar"');
