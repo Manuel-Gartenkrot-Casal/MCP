@@ -246,7 +246,7 @@ describe("/mcp sin cambios", () => {
   });
   it("tools/list y buscar siguen funcionando; 429 MCP conserva su formato", async () => {
     const r = await worker.fetch(rpc(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" })), makeEnv() as any, ctx());
-    expect(((await r.json()) as any).result.tools.map((t: any) => t.name)).toEqual(["buscar", "explorar", "llamar"]);
+    expect(((await r.json()) as any).result.tools.map((t: any) => t.name)).toEqual(["buscar", "servicios", "explorar", "llamar"]);
     const b = await worker.fetch(rpc(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "buscar", arguments: { necesidad: "x" } } })), makeEnv() as any, ctx());
     expect(((await b.json()) as any).result.content[0].text).toContain("<dato>Alfa</dato>");
     const l = await worker.fetch(rpc("{}"), makeEnv({ limited: true }) as any, ctx());
@@ -254,7 +254,7 @@ describe("/mcp sin cambios", () => {
   });
   it("POST / va al transporte MCP", async () => {
     const r = await worker.fetch(new Request("https://w.example/", { method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }), makeEnv() as any, ctx());
-    expect(((await r.json()) as any).result.tools.length).toBe(3);
+    expect(((await r.json()) as any).result.tools.length).toBe(4);
   });
   it("lotes en /mcp siguen 400", async () => {
     const r = await worker.fetch(rpc("[]"), makeEnv() as any, ctx());
