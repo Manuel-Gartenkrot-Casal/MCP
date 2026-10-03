@@ -3,6 +3,7 @@ on:
   push:
     tags:
       - "experimento-*"
+      - "completo-*"
   workflow_dispatch:
 # write access is used ONLY by the publish step (automatic GITHUB_TOKEN, push of the `resultados` branch)
 permissions:
@@ -25,6 +26,8 @@ jobs:
         env:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          # completo-* tags: whole registry as corpus; anything else: the 4,500 indexed today
+          EXPERIMENTO_DOCS: ${{ startsWith(github.ref_name, 'completo-') && 'todos' || '' }}
       - name: Job summary
         run: cat resultados/*.md >> "$GITHUB_STEP_SUMMARY"
       - name: Publish results branch
@@ -34,11 +37,18 @@ jobs:
           cp resultados/* "$out"/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan resultados-tmp
-          git rm -rf --quiet .
-          git clean -ffdx --quiet
-          mkdir resultados
+          rm -rf resultados
+          if git ls-remote --exit-code --heads origin resultados >/dev/null; then
+            # keep earlier results: build on top of the existing branch (fast-forward push)
+            git fetch --depth=1 origin resultados
+            git checkout -f -B resultados-tmp FETCH_HEAD
+          else
+            git checkout --orphan resultados-tmp
+            git rm -rf --quiet .
+            git clean -ffdx --quiet
+          fi
+          mkdir -p resultados
           cp "$out"/* resultados/
           git add resultados
           git commit -m "experimento: resultados de $GITHUB_RUN_ID"
-          git push --force origin HEAD:resultados
+          git push origin HEAD:resultados
