@@ -14,6 +14,7 @@ export interface CatalogStore {
 type Sleep = (ms: number) => Promise<void>;
 const wait: Sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RETRIES = 3;
+const MAX_RETRY_AFTER_S = 300;
 
 // Retries 429 and 5xx up to RETRIES times: Retry-After (seconds) when present, else 1s, 2s, 4s.
 // Cloudflare API limit: 1,200 requests / 5 min per user; a 429 carries retry-after
@@ -24,7 +25,7 @@ async function fetchRetry(fetchFn: typeof fetch, url: string, init: RequestInit,
     if (i >= RETRIES || (res.status !== 429 && res.status < 500)) return res;
     await res.body?.cancel().catch(() => {});
     const ra = Number(res.headers.get("retry-after"));
-    await sleep(ra > 0 ? ra * 1000 : 1000 * 2 ** i);
+    await sleep(ra > 0 ? Math.min(ra, MAX_RETRY_AFTER_S) * 1000 : 1000 * 2 ** i);
   }
 }
 

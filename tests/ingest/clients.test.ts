@@ -64,6 +64,12 @@ describe("reintentos (429 / 5xx)", () => {
     await embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, async (ms) => { sleeps.push(ms); })(["x"]);
     expect(sleeps).toEqual([7000]);
   });
+  it("Retry-After enorme se limita a 300 s; HTTP-date/NaN cae al backoff", async () => {
+    const sleeps: number[] = [];
+    const s = seq(() => json({}, 429, { "Retry-After": "99999" }), () => json({}, 429, { "Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT" }), okEmbed);
+    await embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, async (ms) => { sleeps.push(ms); })(["x"]);
+    expect(sleeps).toEqual([300000, 2000]);
+  });
   it("agota 3 reintentos => lanza con el estado y sin token", async () => {
     const s = spy(() => json({ success: false, errors: [{ message: "busy" }] }, 500));
     const err: Error = await vectorizeUpsert({ accountId: "a", index: "i", token: TOKEN }, s.f, noSleep)([{ id: "i", values: [1] }]).catch((e) => e);
