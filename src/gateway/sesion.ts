@@ -5,6 +5,7 @@ import { toToolInfo } from "./formato";
 import { inicializar, listarHerramientas, llamarHerramienta } from "./cliente";
 
 export const TTL_MS = 10 * 60 * 1000;
+const MAX_CACHE = 500;
 
 const fallo = (e: unknown): { ok: false; code: GwCode } =>
   ({ ok: false, code: e instanceof GatewayError ? e.code : "destino_caido" });
@@ -23,8 +24,9 @@ export class SesionDO extends DurableObject {
   }
 
   private async renovar() {
-    await this.ctx.storage.put("ultimoUso", Date.now());
+    // Alarma antes que el put: si el put falla no quedan datos sin alarma (una alarma sobre almacenamiento vacío es inocua).
     await this.ctx.storage.setAlarm(Date.now() + TTL_MS);
+    await this.ctx.storage.put("ultimoUso", Date.now());
   }
 
   explorar(servidorId: string, url: string): Promise<Salida<ToolInfo[]>> {
@@ -40,15 +42,15 @@ export class SesionDO extends DurableObject {
       // Siempre se reinicializa: una explorar explícita recupera una sesión que el destino olvidó (no es renovación silenciosa).
       const { sessionId, version } = await inicializar(url, this.fetchFn);
       const raw = await listarHerramientas({ url, sessionId, version }, this.fetchFn);
-      const tools = raw.map(toToolInfo).filter((t): t is ToolInfo => t !== null);
+      const tools = raw.map(toToolInfo).filter((t): t is ToolInfo => t !== null).slice(0, MAX_CACHE);
       // Solo ahora se persiste: un fallo previo no deja el token ligado a una sesión a medias.
       const ahora = await st.get<string>("servidor");
       if (ahora !== undefined && ahora !== servidorId) return { ok: false, code: "sesion_otro_servidor" };
+      await st.setAlarm(Date.now() + TTL_MS); // antes del put (ver renovar)
       if (sessionId === undefined) await st.delete("mcpSession");
       if (version === undefined) await st.delete("version");
       await st.put({ servidor: servidorId, tools, ultimoUso: Date.now(),
         ...(sessionId !== undefined && { mcpSession: sessionId }), ...(version !== undefined && { version }) });
-      await st.setAlarm(Date.now() + TTL_MS);
       return { ok: true, valor: tools };
     } catch (e) { return fallo(e); }
   }

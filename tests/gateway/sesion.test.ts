@@ -78,6 +78,29 @@ describe("explorar", () => {
     expect((await llamarD(d, "leer")).ok).toBe(true);
     expect(calls.at(-1).headers["Mcp-Session-Id"]).toBe("S2");
   });
+  it("caché de herramientas acotada a 500", async () => {
+    const muchas = Array.from({ length: 600 }, (_, i) => ({ name: "t" + i }));
+    const { d, st } = montar((c) => c.body.method === "tools/list" ? json(rpc({ tools: muchas }, 2)) : undefined);
+    const r: any = await d.explorar("srv", URL_D);
+    expect(r.ok).toBe(true);
+    expect((st.data.get("tools") as any[]).length).toBe(500);
+  });
+  it("put que falla: la alarma ya está puesta, nada guardado, error sin rechazar", async () => {
+    const { d, st } = montar();
+    st.storage.put = async () => { throw new Error("storage down"); };
+    expect(await d.explorar("srv", URL_D)).toEqual({ ok: false, code: "destino_caido" });
+    expect(st.data.size).toBe(0);
+    expect(st.alarm()).toBeGreaterThan(Date.now() + TTL_MS - 5000);
+  });
+  it("renovación en llamar: setAlarm antes del put", async () => {
+    const { d, st } = montar();
+    await d.explorar("srv", URL_D);
+    await st.storage.setAlarm(1);
+    st.storage.put = async () => { throw new Error("storage down"); };
+    const r: any = await llamarD(d, "leer");
+    expect(r.ok).toBe(false);
+    expect(st.alarm()).toBeGreaterThan(Date.now() + TTL_MS - 5000);
+  });
   it("guarda la versión negociada y la usa en llamar", async () => {
     const { d, st, calls } = montar((c) => c.body.method === "initialize" ? json(rpc({ protocolVersion: "2025-03-26" }, 1), { "Mcp-Session-Id": "S1" }) : undefined);
     await d.explorar("srv", URL_D);
