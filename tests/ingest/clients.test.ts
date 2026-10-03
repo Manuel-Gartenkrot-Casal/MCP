@@ -54,13 +54,19 @@ describe("embedWorkersAI", () => {
 describe("reintentos (429 / 5xx)", () => {
   const vec = Array(EMBED_NATIVE_DIMS).fill(0.5);
   const okEmbed = () => json({ success: true, result: { data: [vec] } });
-  it("429 y luego éxito: reintenta con backoff exponencial", async () => {
+  it("429 sin Retry-After espera 60 s; 5xx con backoff exponencial", async () => {
     const sleeps: number[] = [];
     const s = seq(() => json({}, 429), () => json({}, 503), okEmbed);
     const out = await embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, async (ms) => { sleeps.push(ms); })(["x"]);
     expect(out).toHaveLength(1);
     expect(s.calls).toHaveLength(3);
-    expect(sleeps).toEqual([1000, 2000]);
+    expect(sleeps).toEqual([60000, 2000]);
+  });
+  it("solo 5xx: 1 s, 2 s, 4 s y luego éxito", async () => {
+    const sleeps: number[] = [];
+    const s = seq(() => json({}, 500), () => json({}, 502), () => json({}, 503), okEmbed);
+    await embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, async (ms) => { sleeps.push(ms); })(["x"]);
+    expect(sleeps).toEqual([1000, 2000, 4000]);
   });
   it("respeta Retry-After (segundos)", async () => {
     const sleeps: number[] = [];
@@ -68,11 +74,11 @@ describe("reintentos (429 / 5xx)", () => {
     await embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, async (ms) => { sleeps.push(ms); })(["x"]);
     expect(sleeps).toEqual([7000]);
   });
-  it("Retry-After enorme se limita a 300 s; HTTP-date/NaN cae al backoff", async () => {
+  it("Retry-After enorme se limita a 300 s; HTTP-date/NaN en un 429 espera 60 s", async () => {
     const sleeps: number[] = [];
     const s = seq(() => json({}, 429, { "Retry-After": "99999" }), () => json({}, 429, { "Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT" }), okEmbed);
     await embedWorkersAI({ accountId: "a", token: TOKEN }, s.f, async (ms) => { sleeps.push(ms); })(["x"]);
-    expect(sleeps).toEqual([300000, 2000]);
+    expect(sleeps).toEqual([300000, 60000]);
   });
   it("agota 3 reintentos => lanza con el estado y sin token", async () => {
     const s = spy(() => json({ success: false, errors: [{ message: "busy" }] }, 500));

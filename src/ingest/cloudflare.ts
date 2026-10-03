@@ -16,8 +16,10 @@ type Sleep = (ms: number) => Promise<void>;
 const wait: Sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RETRIES = 3;
 const MAX_RETRY_AFTER_S = 300;
+const RATE_LIMIT_WAIT_S = 60; // 429 without a usable Retry-After: the 1,200 / 5 min window needs more than seconds
 
-// Retries 429 and 5xx up to RETRIES times: Retry-After (seconds) when present, else 1s, 2s, 4s.
+// Retries 429 and 5xx up to RETRIES times: Retry-After (seconds, capped) when present; else 60 s for a 429
+// and 1s, 2s, 4s for a 5xx.
 // Cloudflare API limit: 1,200 requests / 5 min per user; a 429 carries retry-after
 // (https://developers.cloudflare.com/fundamentals/api/reference/limits/).
 export async function fetchRetry(fetchFn: typeof fetch, url: string, init: RequestInit, sleep: Sleep): Promise<Response> {
@@ -26,7 +28,7 @@ export async function fetchRetry(fetchFn: typeof fetch, url: string, init: Reque
     if (i >= RETRIES || (res.status !== 429 && res.status < 500)) return res;
     await res.body?.cancel().catch(() => {});
     const ra = Number(res.headers.get("retry-after"));
-    await sleep(ra > 0 ? Math.min(ra, MAX_RETRY_AFTER_S) * 1000 : 1000 * 2 ** i);
+    await sleep(ra > 0 ? Math.min(ra, MAX_RETRY_AFTER_S) * 1000 : res.status === 429 ? RATE_LIMIT_WAIT_S * 1000 : 1000 * 2 ** i);
   }
 }
 

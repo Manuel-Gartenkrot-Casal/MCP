@@ -28,6 +28,9 @@ describe("embedding", () => {
       null, "x", { length: EMBED_NATIVE_DIMS }, Array(EMBED_DIMS).fill(0.5), Array(1024).fill(0.5),
       [...ok.slice(1), NaN], [...ok.slice(1), Infinity], [...ok.slice(1), "0.5"],
       Array(EMBED_NATIVE_DIMS).fill(0), [...Array(EMBED_DIMS).fill(0), ...Array(EMBED_NATIVE_DIMS - EMBED_DIMS).fill(1)],
+      Array(EMBED_NATIVE_DIMS).fill(1e200), // norm overflows to Infinity: must not become an all-zero vector
+      (() => { const a = Array(EMBED_NATIVE_DIMS).fill(0.5); delete a[3]; return a; })(), // sparse (hole)
+      new Array(EMBED_NATIVE_DIMS), // all holes
     ];
     for (const m of malos) {
       let e: unknown;
@@ -35,5 +38,15 @@ describe("embedding", () => {
       expect(e, String(m).slice(0, 20)).toBeInstanceOf(Error);
       expect((e as Error).message).not.toMatch(/0\.5|NaN|Infinity/);
     }
+  });
+});
+
+describe("README sin deriva", () => {
+  it("cada --dimensions= del README es EMBED_DIMS", async () => {
+    const { readFileSync } = await import("node:fs");
+    const md = readFileSync("README.md", "utf8") // vitest runs from the repo root;
+    const dims = [...md.matchAll(/--dimensions=(\d+)/g)].map((m) => Number(m[1]));
+    expect(dims.length).toBeGreaterThan(0);
+    for (const d of dims) expect(d).toBe(EMBED_DIMS);
   });
 });

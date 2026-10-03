@@ -22,11 +22,12 @@ export function truncateNormalize(v: ArrayLike<number>, d: number): Float32Array
 
 // One model vector -> the stored/queried vector. Fixed messages: never echo the data.
 export function reducir(v: unknown): number[] {
-  if (!Array.isArray(v) || v.length !== EMBED_NATIVE_DIMS || !v.every((x) => typeof x === "number" && Number.isFinite(x)))
-    throw new Error(`embedding inválido: se esperaban ${EMBED_NATIVE_DIMS} números finitos`);
+  const malo = () => new Error(`embedding inválido: se esperaban ${EMBED_NATIVE_DIMS} números finitos`);
+  if (!Array.isArray(v) || v.length !== EMBED_NATIVE_DIMS) throw malo();
+  for (let i = 0; i < EMBED_NATIVE_DIMS; i++) if (typeof v[i] !== "number" || !Number.isFinite(v[i])) throw malo(); // holes read as undefined
   let n = 0;
   for (let i = 0; i < EMBED_DIMS; i++) n += v[i] * v[i];
   n = Math.sqrt(n);
-  if (!(n > 0)) throw new Error("embedding inválido: norma cero");
+  if (!(n > 0 && Number.isFinite(n))) throw new Error("embedding inválido: norma cero o no finita");
   return v.slice(0, EMBED_DIMS).map((x) => x / n);
 }

@@ -10,6 +10,10 @@ const MAX_ID_BYTES = 64;
 // 25 is the batch the embedding experiment ran with. A full (re)index of ~38k entries is ~7,700 REST
 // calls; Cloudflare allows 1,200 / 5 min per user, so 429s are expected and fetchRetry waits them out.
 const BATCH = 25;
+// REINDEX only: each batch is ~5 REST calls (embed, upsert, 3 D1 inserts) plus amortised reads; >= 1.5 s per
+// batch keeps it under ~3.5 calls/s, i.e. ~1,000 / 5 min, below Cloudflare's 1,200 / 5 min.
+export const PAUSA_LOTE_REINDEX_MS = 1500;
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export interface IngestDeps {
   fetchEntries(): Promise<Entry[]>;
@@ -21,6 +25,7 @@ export interface IngestDeps {
   maxVectors?: number;
   forcePrune?: boolean; // bypasses ONLY the >50%-stale guard, never the empty/tiny-registry one
   reindex?: boolean; // re-embed every kept entry (new model/index); prune guards unchanged
+  sleep?: (ms: number) => Promise<void>; // reindex pacing; injectable for tests
 }
 
 // Best first: remote, has url_info, description >= 40 chars, newest, then id.
@@ -92,7 +97,11 @@ export async function runIngest(
     } catch (err) {
       fallidas += batch.length; // whole batch retried next run
       deps.log(`fallo lote de ${batch.length} (desde ${batch[0].id}): ${err instanceof Error ? err.message : String(err)}`);
+      // Reindex: their old rows say "already embedded" but the new index has no vector; drop the rows so the
+      // next incremental run treats them as new. Best effort: a failure here only delays that.
+      if (deps.reindex) await deps.store.deleteIds(batch.map((e) => e.id)).catch(() => {});
     }
+    if (deps.reindex && i + BATCH < todo.length) await (deps.sleep ?? wait)(PAUSA_LOTE_REINDEX_MS);
   }
   deps.log(`ingesta: nuevas=${nuevas} omitidas=${omitidas} fallidas=${fallidas} fuera_de_cupo=${fuera_de_cupo} podadas=${podadas}`);
   return { nuevas, omitidas, fallidas, fuera_de_cupo, podadas };

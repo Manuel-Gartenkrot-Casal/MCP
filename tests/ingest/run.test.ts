@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runIngest, rankEntries, exitCodeFor, type IngestDeps } from "../../src/ingest/run";
+import { runIngest, rankEntries, exitCodeFor, PAUSA_LOTE_REINDEX_MS, type IngestDeps } from "../../src/ingest/run";
 import { embedWorkersAI } from "../../src/ingest/cloudflare";
 import type { Entry } from "../../src/types";
 
@@ -294,6 +294,54 @@ describe("reindex", () => {
     f.deps.reindex = false;
     expect(await runIngest(f.deps)).toMatchObject({ nuevas: 0, omitidas: 3 });
     expect(f.embedded).toEqual([]);
+  });
+  it("reindex: un lote que falla borra sus filas de D1 (la ingesta diaria lo completará); los demás se escriben", async () => {
+    const f = fake(many(60));
+    await runIngest(f.deps);
+    f.upsertCalls.length = 0; f.ops.length = 0;
+    const ok = f.deps.embedBatch;
+    f.deps.embedBatch = async (ts) => { if (ts.includes("Ne030\nDe030")) throw new Error("x"); return ok(ts); };
+    f.deps.reindex = true;
+    f.deps.sleep = async () => {};
+    const r = await runIngest(f.deps);
+    expect(r).toMatchObject({ nuevas: 35, fallidas: 25 });
+    expect(f.upsertCalls).toEqual([25, 10]); // the failed batch never reached Vectorize
+    const borradas = Array.from({ length: 25 }, (_, i) => "e0" + String(25 + i).padStart(2, "0"));
+    expect(f.ops).toEqual(["rows:" + borradas.join(",")]);
+    for (const id of borradas) expect(f.rows.has(id)).toBe(false);
+    expect(f.rows.size).toBe(35);
+    // next incremental run sees them as new
+    f.deps.embedBatch = ok; f.deps.reindex = false;
+    expect(await runIngest(f.deps)).toMatchObject({ nuevas: 25, omitidas: 35, fallidas: 0 });
+  });
+  it("reindex: si el borrado best-effort falla, el lote sigue contando como fallido y no lanza", async () => {
+    const f = fake(many(30));
+    await runIngest(f.deps);
+    f.deps.embedBatch = async () => { throw new Error("x"); };
+    f.deps.store.deleteIds = async () => { throw new Error("d1 down"); };
+    f.deps.reindex = true;
+    f.deps.sleep = async () => {};
+    expect(await runIngest(f.deps)).toMatchObject({ nuevas: 0, fallidas: 30 });
+  });
+  it("modo normal: un lote que falla NO borra filas", async () => {
+    const f = fake(many(30));
+    await runIngest(f.deps);
+    f.deps.fetchEntries = async () => many(30).map((e) => ({ ...e, actualizado: "2026-09-09" }));
+    f.deps.embedBatch = async () => { throw new Error("x"); };
+    f.ops.length = 0;
+    expect(await runIngest(f.deps)).toMatchObject({ fallidas: 30 });
+    expect(f.ops).toEqual([]);
+    expect(f.rows.size).toBe(30);
+  });
+  it("reindex espera PAUSA_LOTE_REINDEX_MS entre lotes (no tras el último); el modo normal no espera", async () => {
+    expect(PAUSA_LOTE_REINDEX_MS).toBe(1500);
+    const waits: number[] = [];
+    const f = fake(many(60), { sleep: async (ms) => { waits.push(ms); } });
+    await runIngest(f.deps);
+    expect(waits).toEqual([]);
+    f.deps.reindex = true;
+    await runIngest(f.deps);
+    expect(waits).toEqual([1500, 1500]);
   });
   const ten = Array.from({ length: 10 }, (_, i) => mk("s" + i));
   const fresh = (n: number) => Array.from({ length: n }, (_, i) => mk("n" + i, { actualizado: "2026-05-01" }));
