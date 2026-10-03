@@ -5,9 +5,12 @@ import { buscar, InputError, type Filtros, type SearchDeps } from "./search/busc
 import { parseRerankResponse } from "./search/rerank";
 import { formatResultados } from "./search/sanitize";
 import { logBusqueda } from "./log";
+import { registerGateway, type GwEnv } from "./gateway/tools";
 import type { Entry } from "./types";
 
-interface Env { DB: D1Database; VECTORS: VectorizeIndex; AI: Ai; LOGS: R2Bucket; LIMITER: RateLimit }
+export { SesionDO } from "./gateway/sesion";
+
+interface Env extends GwEnv { VECTORS: VectorizeIndex; AI: Ai; LIMITER: RateLimit }
 
 // Duplicated from src/ingest/cloudflare.ts (EMBEDDING_DIMS) to keep that Node-oriented module out of the Worker bundle.
 const DIMS = 1024;
@@ -41,13 +44,13 @@ function realDeps(env: Env): SearchDeps {
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], ...(isError ? { isError } : {}) });
 
-function buildServer(env: Env, ctx: ExecutionContext) {
+function buildServer(env: Env, ctx: ExecutionContext, ip: string, host: string) {
   const server = new McpServer({ name: "catalogo-mcp-busqueda", version: "0.1.0" });
   server.registerTool(
     "buscar",
     {
       description:
-        "Busca en el catálogo de servidores MCP según una necesidad descrita en lenguaje natural (por ejemplo: 'leer hojas de cálculo'). Devuelve los servidores más relevantes y cómo conectarlos.",
+        "Busca en el catálogo de servidores MCP según una necesidad descrita en lenguaje natural (por ejemplo: 'leer hojas de cálculo'). Devuelve los servidores más relevantes y cómo conectarlos. Para usar uno remoto sin autenticación, pasa su `id` a `explorar` y `llamar`.",
       inputSchema: {
         necesidad: z.string().max(2000).describe("Qué necesitas hacer, en lenguaje natural (español o inglés), máximo 2000 caracteres."),
         tipo_conexion: z.enum(["remoto", "local"]).optional().describe("Filtro opcional: 'remoto' (se conecta por URL) o 'local' (se ejecuta en tu máquina con npx/uvx/docker)."),
@@ -67,6 +70,7 @@ function buildServer(env: Env, ctx: ExecutionContext) {
       }
     },
   );
+  registerGateway(server, env, ctx, ip, host);
   return server;
 }
 
@@ -99,8 +103,9 @@ async function readCapped(req: Request): Promise<Uint8Array | null> {
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     let success = true;
+    const ip = req.headers.get("CF-Connecting-IP") ?? "anon";
     try {
-      ({ success } = await env.LIMITER.limit({ key: req.headers.get("CF-Connecting-IP") ?? "anon" }));
+      ({ success } = await env.LIMITER.limit({ key: ip }));
     } catch {
       // fail open: a limiter outage must not take the service down
     }
@@ -110,7 +115,7 @@ export default {
     if (!body) return err(413, "Petición demasiado grande (máximo 16 KB).");
     // Stateless: fresh server + transport per request, JSON responses (no SSE/session).
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
-    await buildServer(env, ctx).connect(transport);
+    await buildServer(env, ctx, ip, new URL(req.url).host).connect(transport);
     return transport.handleRequest(new Request(req.url, { method: "POST", headers: req.headers, body }));
   },
 };
