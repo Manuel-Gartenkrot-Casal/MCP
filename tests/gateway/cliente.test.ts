@@ -166,3 +166,42 @@ describe("cabeceras", () => {
     }
   });
 });
+
+describe("endurecimiento", () => {
+  const largo = "a".repeat(257);
+  for (const [n, v] of [["demasiado largo", largo], ["con espacio", "a b"], ["con caracteres no ASCII", "añ"]] as const) {
+    it(`Mcp-Session-Id ${n} se trata como sin sesión`, async () => {
+      const { fn, calls } = fake((c) => c.body.method === "initialize" ? json(rpc({}), { "Mcp-Session-Id": v }) : new Response(null, { status: 202 }));
+      expect(await inicializar(URL_D, fn)).toEqual({});
+      expect(calls[1].init.headers).not.toHaveProperty("Mcp-Session-Id");
+    });
+  }
+  it("Mcp-Session-Id de 256 caracteres válidos se acepta", async () => {
+    const ok = "a".repeat(256);
+    const { fn } = fake((c) => c.body.method === "initialize" ? json(rpc({}), { "Mcp-Session-Id": ok }) : new Response(null, { status: 202 }));
+    expect(await inicializar(URL_D, fn)).toEqual({ sessionId: ok });
+  });
+  it("id JSON distinto del de la petición → destino_caido", async () => {
+    const { fn } = fake(() => json(rpc({ tools: [] }, 99)));
+    expect(await codigo(listarHerramientas({ url: URL_D }, fn))).toBe("destino_caido");
+  });
+  it("SSE salta eventos con otro id y usa el correcto", async () => {
+    const cuerpo = `data: ${JSON.stringify(rpc({ tools: [{ name: "malo" }] }, 77))}\n\ndata: ${JSON.stringify(rpc({ tools: [{ name: "bueno" }] }, 2))}\n\n`;
+    const { fn } = fake(() => new Response(cuerpo, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    expect(await listarHerramientas({ url: URL_D }, fn)).toEqual([{ name: "bueno" }]);
+  });
+  it("SSE con solo ids ajenos → destino_caido", async () => {
+    const { fn } = fake(() => new Response(`data: ${JSON.stringify(rpc({ tools: [] }, 77))}\n\n`, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    expect(await codigo(listarHerramientas({ url: URL_D }, fn))).toBe("destino_caido");
+  });
+  it("content-type en mayúsculas", async () => {
+    const { fn } = fake(() => new Response(`data: ${JSON.stringify(rpc({ tools: [] }, 2))}\n\n`, { status: 200, headers: { "content-type": "Text/Event-Stream; charset=utf-8" } }));
+    expect(await listarHerramientas({ url: URL_D }, fn)).toEqual([]);
+  });
+  it("data multilínea se une con \n", async () => {
+    const j = JSON.stringify(rpc({ tools: [{ name: "m" }] }, 2), null, 1).split("\n");
+    const cuerpo = j.map((l) => `data: ${l}`).join("\n") + "\n\n";
+    const { fn } = fake(() => new Response(cuerpo, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    expect(await listarHerramientas({ url: URL_D }, fn)).toEqual([{ name: "m" }]);
+  });
+});

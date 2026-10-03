@@ -27,19 +27,22 @@ async function leerAcotado(res: Response): Promise<string> {
   return new TextDecoder().decode(buf);
 }
 
+const SID_OK = /^[\x21-\x7e]{1,256}$/;
 const esRpc = (v: unknown): v is Record<string, unknown> => isObj(v) && ("result" in v || "error" in v);
 
-function parsear(texto: string, ct: string): Record<string, unknown> | null {
+function parsear(texto: string, ct: string, id: number): Record<string, unknown> | null {
+  const ok = (j: unknown): j is Record<string, unknown> => esRpc(j) && j.id === id;
   try {
-    if (ct.includes("text/event-stream")) {
-      for (const linea of texto.split(/\r?\n/)) {
-        if (!linea.startsWith("data:")) continue;
-        try { const j = JSON.parse(linea.slice(5).trim()); if (esRpc(j)) return j; } catch { /* otro evento */ }
+    if (ct.toLowerCase().includes("text/event-stream")) {
+      for (const ev of texto.split(/\r?\n\r?\n/)) {
+        const datos = ev.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).replace(/^ /, ""));
+        if (datos.length === 0) continue;
+        try { const j = JSON.parse(datos.join("\n")); if (ok(j)) return j; } catch { /* otro evento */ }
       }
       return null;
     }
     const j = JSON.parse(texto);
-    return esRpc(j) ? j : null;
+    return ok(j) ? j : null;
   } catch { return null; }
 }
 
@@ -69,12 +72,13 @@ async function enviar(url: string, sessionId: string | undefined, msg: object, f
     if (e instanceof GatewayError) throw e;
     throw new GatewayError(e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError") ? "timeout" : "destino_caido");
   }
-  return { texto, ct: res.headers.get("content-type") ?? "", sid: res.headers.get("mcp-session-id") ?? undefined };
+  const sid = res.headers.get("mcp-session-id");
+  return { texto, ct: res.headers.get("content-type") ?? "", sid: SID_OK.test(sid ?? "") ? sid! : undefined };
 }
 
 async function pedir(d: Destino, id: number, method: string, params: object, fetchFn: typeof fetch) {
   const r = await enviar(d.url, d.sessionId, { jsonrpc: "2.0", id, method, params }, fetchFn);
-  const rpc = parsear(r.texto, r.ct);
+  const rpc = parsear(r.texto, r.ct, id);
   if (!rpc || !isObj(rpc.result)) throw new GatewayError("destino_caido");
   return { result: rpc.result, sid: r.sid };
 }
