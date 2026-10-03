@@ -3,10 +3,10 @@ import { rerankWorkersAI, collect } from "../../eval/run";
 
 describe("rerankWorkersAI", () => {
   const cfg = { accountId: "ACC", token: "SECRET-TOKEN" };
-  it("POST al endpoint, desenvuelve result y aplica sigmoide", async () => {
-    const f = vi.fn(async () => Response.json({ success: true, result: [{ id: 1, score: 0 }, { id: 0, score: 0 }] }));
+  it("POST al endpoint, desenvuelve result.response y ordena por id", async () => {
+    const f = vi.fn(async () => Response.json({ success: true, result: { response: [{ id: 1, score: 0.2 }, { id: 0, score: 0.9 }] } }));
     const r = await rerankWorkersAI(cfg, f as any)("q", ["a", "b"]);
-    expect(r).toEqual([0.5, 0.5]);
+    expect(r).toEqual([0.9, 0.2]);
     const [url, init] = f.mock.calls[0] as any;
     expect(url).toBe("https://api.cloudflare.com/client/v4/accounts/ACC/ai/run/@cf/baai/bge-reranker-base");
     expect(init.headers.Authorization).toBe("Bearer SECRET-TOKEN");

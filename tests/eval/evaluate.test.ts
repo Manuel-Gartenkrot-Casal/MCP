@@ -106,7 +106,7 @@ describe("evaluarModos / formatComparacion", () => {
     expect(m.reranked.aciertos).toBe(2);
     expect(m.vector.barrido.map((b) => b.umbral)).toEqual([0.3, 0.4, 0.5, 0.6, 0.7]);
     expect(m.reranked.barrido.map((b) => b.umbral)).toEqual(UMBRALES_RERANK);
-    expect(UMBRALES_RERANK).toEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]);
+    expect(UMBRALES_RERANK).toEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]);
     expect(m.reranked.recomendado).toBe(0.7); // mejor 0.7 conserva a y b; el absurdo (0.15) se rechaza desde 0.2
   });
   it("el informe muestra ambos modos, idiomas, fallos y recomendación", () => {

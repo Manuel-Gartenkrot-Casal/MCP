@@ -1,7 +1,7 @@
 export interface Case { necesidad: string; esperado: string | null; idioma?: "es" | "en" }
 export interface Hit { id: string; score: number }
 export const UMBRALES = [0.3, 0.4, 0.5, 0.6, 0.7];
-export const UMBRALES_RERANK = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+export const UMBRALES_RERANK = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99];
 const TOP = 5;
 
 export interface Report {
@@ -86,7 +86,7 @@ export function formatReport(r: Report): string {
 export interface Modos { vector: Report; reranked: Report }
 
 // vector[i] / reranked[i] = raw hits for cases[i] in each mode. The vector sweep keeps UMBRALES;
-// the reranked sweep uses UMBRALES_RERANK (its scores are sigmoid outputs spread over (0,1)).
+// the reranked sweep uses UMBRALES_RERANK (its scores are bimodal probabilities: relevant ~0.95+, irrelevant ~0.0001, hence 0.95 and 0.99).
 export function evaluarModos(cases: Case[], vector: Hit[][], reranked: Hit[][], indexados?: Set<string>): Modos {
   return {
     vector: evaluate(cases, vector, UMBRALES, indexados),

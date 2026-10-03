@@ -69,8 +69,15 @@ async function rerankear(deps: SearchDeps, q: string, out: Resultado[]): Promise
   if (!RERANK_ENABLED || !deps.rerank) return null;
   try {
     const s = await deps.rerank(q, out.map((r) => r.nombre + "\n" + r.funcion));
-    return Array.isArray(s) && s.length === out.length && s.every((x) => typeof x === "number" && Number.isFinite(x)) ? s : null;
+    return puntajesValidos(s, out.length) ? s : null;
   } catch {
     return null;
   }
+}
+
+// n finite scores in [0,1]. Plain loop so sparse-array holes (undefined) are rejected too.
+export function puntajesValidos(s: unknown, n: number): s is number[] {
+  if (!Array.isArray(s) || s.length !== n) return false;
+  for (let i = 0; i < n; i++) if (typeof s[i] !== "number" || !(s[i] >= 0 && s[i] <= 1)) return false;
+  return true;
 }

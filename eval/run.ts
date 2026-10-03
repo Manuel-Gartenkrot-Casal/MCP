@@ -32,7 +32,7 @@ export function vectorizeQuery(cfg: { accountId: string; index: string; token: s
 
 // Docs: https://developers.cloudflare.com/workers-ai/models/bge-reranker-base/
 // POST /accounts/{id}/ai/run/@cf/baai/bge-reranker-base, body {query, contexts:[{text}]}; REST wraps the model output in `result`.
-// Same sigmoid/shape handling as the Worker (parseRerankResponse); the raw-vs-[0,1] shape is UNVERIFIED until the first real run.
+// Scores are already probabilities in [0,1] (shape probed live on 2026-10-02); parsed by the same parseRerankResponse as the Worker.
 export function rerankWorkersAI(cfg: { accountId: string; token: string }, fetchFn: typeof fetch = fetch): NonNullable<SearchDeps["rerank"]> {
   return async (query, textos) => {
     const res = await fetchFn(`${API}/${cfg.accountId}/ai/run/@cf/baai/bge-reranker-base`, {

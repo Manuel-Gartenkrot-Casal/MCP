@@ -155,22 +155,23 @@ describe("worker MCP", () => {
     const names = (r: any) => [...r.result.content[0].text.matchAll(/<dato>(Alfa|Beta)<\/dato>/g)].map((m) => m[1]);
 
     it("un rerank correcto cambia el orden y envía query y contexts sanitizados", async () => {
-      const env = withAI(() => [{ id: 0, score: -2 }, { id: 1, score: 3 }]);
+      const env = withAI(() => [{ id: 1, score: 0.95 }, { id: 0, score: 0.05 }]);
       const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));
       expect(names(r)).toEqual(["Beta", "Alfa"]);
       const [m, input] = env.AI.run.mock.calls[1] as any;
       expect(m).toBe("@cf/baai/bge-reranker-base");
       expect(input).toEqual({ query: "algo", contexts: [{ text: "Alfa\nhace cosas" }, { text: "Beta\nhace cosas" }] });
-      expect(r.result.content[0].text).toContain("puntaje: 0.953");
+      expect(r.result.content[0].text).toContain("puntaje: 0.950");
     });
     it("acepta la forma envuelta { response }", async () => {
-      const env = withAI(() => ({ response: [{ id: 1, score: 1 }, { id: 0, score: 2 }] }));
+      const env = withAI(() => ({ response: [{ id: 0, score: 0.9 }, { id: 1, score: 0.8 }] }));
       expect(names(await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx())))).toEqual(["Alfa", "Beta"]);
     });
     it.each([
       ["rechaza", () => { throw new Error("secret ai down"); }],
       ["forma inválida", () => ({ nope: true })],
-      ["ids duplicados", () => [{ id: 0, score: 1 }, { id: 0, score: 2 }]],
+      ["ids duplicados", () => [{ id: 0, score: 0.1 }, { id: 0, score: 0.2 }]],
+      ["score fuera de [0,1]", () => [{ id: 0, score: 3 }, { id: 1, score: -2 }]],
     ])("rerank que %s -> respuesta normal en orden vectorial", async (_n, f) => {
       const env = withAI(f as any);
       const r = await json(await worker.fetch(call({ necesidad: "algo" }), env as any, ctx()));

@@ -1,20 +1,22 @@
 // Shared by the Worker and eval/run.ts. Model: @cf/baai/bge-reranker-base.
-export const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
-// raw = the model output: a bare array or { response: [...] } of { id, score }, where id is the INDEX
-// of the context in the request. Returns n scores in (0,1) aligned with the request order; throws on
-// anything malformed (callers fall back to vector order). The docs say the raw score "can be mapped to
-// [0,1] by a sigmoid", so we always apply it. UNVERIFIED: whether the real response is raw logits or
-// already in [0,1] (a sigmoid over [0,1] would squash to [0.5,0.73]) until the first real call.
+// raw = the model output: a bare array, { response: [...] } or the REST body's { result: { response: [...] } },
+// of { id, score } where id is the INDEX of the context in the request and score is already a probability in [0,1].
+// Shape verified by probing the REST endpoint live on 2026-10-02: { result: { response: [{id, score}, ...] } },
+// sorted by score descending (not input order), relevant ~0.95-0.999, irrelevant ~0.00004. Whether the Worker's
+// env.AI binding returns the same bare/{response} shape without `result` is still unverified (por verificar);
+// the three forms are accepted. Returns n scores aligned with the request order; throws on anything malformed
+// (missing/duplicate/out-of-range ids, non-finite or outside [0,1] scores) so callers fall back to vector order.
 export function parseRerankResponse(raw: unknown, n: number): number[] {
-  const arr = Array.isArray(raw) ? raw : (raw as any)?.response;
+  const r: any = raw;
+  const arr = Array.isArray(r) ? r : Array.isArray(r?.response) ? r.response : r?.result?.response;
   if (!Array.isArray(arr) || arr.length !== n) throw new Error("rerank: forma inválida");
   const out: (number | undefined)[] = new Array(n).fill(undefined);
-  for (const it of arr) {
-    const id = it?.id, score = it?.score;
+  for (let i = 0; i < n; i++) { // plain loop: sparse-array holes arrive as undefined and are rejected
+    const it: any = arr[i], id = it?.id, score = it?.score;
     if (!Number.isInteger(id) || id < 0 || id >= n || out[id] !== undefined) throw new Error("rerank: id inválido");
-    if (typeof score !== "number" || !Number.isFinite(score)) throw new Error("rerank: score inválido");
-    out[id] = sigmoid(score);
+    if (typeof score !== "number" || !(score >= 0 && score <= 1)) throw new Error("rerank: score inválido");
+    out[id] = score;
   }
   return out as number[];
 }

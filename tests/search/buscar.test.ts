@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { buscar, InputError, UMBRAL_RERANK, UMBRAL_VECTOR, type SearchDeps } from "../../src/search/buscar";
+import { buscar, InputError, UMBRAL_RERANK, UMBRAL_VECTOR, puntajesValidos, type SearchDeps } from "../../src/search/buscar";
 import type { Entry } from "../../src/types";
 
 const entry = (id: string, o: Partial<Entry> = {}): Entry => ({
@@ -78,6 +78,10 @@ describe("buscar", () => {
     expect(r.mensaje).toBe("sin coincidencias fiables");
   });
 
+  it("puntajesValidos", () => {
+    expect(puntajesValidos([0, 0.5, 1], 3)).toBe(true);
+    for (const bad of [[0.5], [0.5, , 0.1], [2, 0, 0], [NaN, 0, 0], ["0.5", 0, 0], "x", null]) expect(puntajesValidos(bad, 3)).toBe(false);
+  });
   describe("rerank", () => {
     const hits = [0.9, 0.8, 0.7].map((s, i) => ({ id: "e" + i, score: s }));
     const es = hits.map((h) => entry(h.id));
@@ -105,6 +109,9 @@ describe("buscar", () => {
       ["longitud errónea", rr([0.9])],
       ["NaN", rr([0.9, NaN, 0.1])],
       ["Infinity", rr([0.9, Infinity, 0.1])],
+      ["fuera de [0,1]", rr([0.9, 1.5, 0.1])],
+      ["negativo", rr([0.9, -0.1, 0.1])],
+      ["hueco (array disperso)", vi.fn(async () => [0.9, , 0.1] as number[])],
       ["no array", vi.fn(async () => "x" as any)],
       ["síncrono que lanza", vi.fn((() => { throw new Error("sync"); }) as any)],
     ])("fallback a orden vectorial si rerank %s", async (_n, rerank) => {
