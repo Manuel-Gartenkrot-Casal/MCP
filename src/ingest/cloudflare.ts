@@ -19,7 +19,7 @@ const MAX_RETRY_AFTER_S = 300;
 // Retries 429 and 5xx up to RETRIES times: Retry-After (seconds) when present, else 1s, 2s, 4s.
 // Cloudflare API limit: 1,200 requests / 5 min per user; a 429 carries retry-after
 // (https://developers.cloudflare.com/fundamentals/api/reference/limits/).
-async function fetchRetry(fetchFn: typeof fetch, url: string, init: RequestInit, sleep: Sleep): Promise<Response> {
+export async function fetchRetry(fetchFn: typeof fetch, url: string, init: RequestInit, sleep: Sleep): Promise<Response> {
   for (let i = 0; ; i++) {
     const res = await fetchFn(url, init);
     if (i >= RETRIES || (res.status !== 429 && res.status < 500)) return res;
