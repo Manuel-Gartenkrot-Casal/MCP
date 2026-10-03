@@ -9,17 +9,18 @@ Servidor MCP público, gratuito y de solo lectura, en Cloudflare Workers. Expone
 
 ## Añadirlo a un cliente MCP
 
+**Servicio en producción** (desplegado y probado el 2026-10-03; pasarela encendida):
 El Worker no distingue rutas: responde a cualquier ruta, solo con `POST` (Streamable HTTP sin estado, respuestas JSON). Usa `/mcp` por convención:
 
-    https://<tu-worker>.workers.dev/mcp
+    https://catalogo-mcp-busqueda.manuelgartenkrotcasal.workers.dev/mcp
 
-Claude Code (sintaxis por verificar con tu versión):
+Claude Code (verificado: `claude mcp list` lo muestra como Connected; la herramienta aparece en una sesión nueva):
 
-    claude mcp add --transport http catalogo https://<tu-worker>.workers.dev/mcp
+    claude mcp add --transport http catalogo https://catalogo-mcp-busqueda.manuelgartenkrotcasal.workers.dev/mcp
 
 Otros clientes con Streamable HTTP (forma del JSON por verificar según el cliente):
 
-    { "mcpServers": { "catalogo": { "type": "http", "url": "https://<tu-worker>.workers.dev/mcp" } } }
+    { "mcpServers": { "catalogo": { "type": "http", "url": "https://catalogo-mcp-busqueda.manuelgartenkrotcasal.workers.dev/mcp" } } }
 
 ## Cómo funciona
 
