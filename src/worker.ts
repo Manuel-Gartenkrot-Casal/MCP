@@ -7,6 +7,7 @@ import { formatResultados } from "./search/sanitize";
 import { logBusqueda } from "./log";
 import { registerGateway, type GwEnv } from "./gateway/tools";
 import { UA_PREFIJO } from "./gateway/cliente";
+import { renderPagina } from "./ui";
 import type { Entry } from "./types";
 
 export { SesionDO } from "./gateway/sesion";
@@ -43,6 +44,13 @@ function realDeps(env: Env): SearchDeps {
   };
 }
 
+// Same search + log for the MCP tool and /api/buscar.
+async function buscarYRegistrar(env: Env, ctx: ExecutionContext, necesidad: string, filtros: Filtros) {
+  const r = await buscar(realDeps(env), necesidad, filtros);
+  ctx.waitUntil(logBusqueda(env.LOGS, { consulta: necesidad, filtros, n_resultados: r.coincidencias.length }).catch(() => {}));
+  return r;
+}
+
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], ...(isError ? { isError } : {}) });
 
 function buildServer(env: Env, ctx: ExecutionContext, ip: string, host: string) {
@@ -61,10 +69,7 @@ function buildServer(env: Env, ctx: ExecutionContext, ip: string, host: string) 
     async ({ necesidad, tipo_conexion, auth }) => {
       const filtros: Filtros = { ...(tipo_conexion && { tipo_conexion }), ...(auth && { auth }) };
       try {
-        const r = await buscar(realDeps(env), necesidad, filtros);
-        ctx.waitUntil(
-          logBusqueda(env.LOGS, { consulta: necesidad, filtros, n_resultados: r.coincidencias.length }).catch(() => {}),
-        );
+        const r = await buscarYRegistrar(env, ctx, necesidad, filtros);
         return text(r.coincidencias.length ? formatResultados(r.coincidencias) : (r.mensaje ?? "sin coincidencias fiables"));
       } catch (e) {
         return e instanceof InputError ? text(e.message, true) : text("error interno", true);
@@ -107,6 +112,52 @@ async function readCapped(req: Request): Promise<Uint8Array | null> {
   return out;
 }
 
+const LIMITE = "Demasiadas peticiones, inténtalo de nuevo en un minuto.";
+const NO_POST = "Método no permitido; usa POST.";
+const GRANDE = "Petición demasiado grande (máximo 16 KB).";
+
+// /api/buscar: same-origin JSON for the web page. No CORS headers on purpose.
+const apiRes = (status: number, o: unknown, headers?: Record<string, string>) =>
+  Response.json(o, { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers } });
+const apiErr = (status: number, error: string, headers?: Record<string, string>) => apiRes(status, { error }, headers);
+
+const CONEXIONES = ["remoto", "local"];
+const AUTHS = ["ninguna", "clave", "oauth", "desconocida"];
+
+async function apiBuscar(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  if (req.method !== "POST") return apiErr(405, NO_POST, { Allow: "POST" });
+  const body = await readCapped(req);
+  if (!body) return apiErr(413, GRANDE);
+  let d: any;
+  try { d = JSON.parse(new TextDecoder().decode(body)); } catch { return apiErr(400, "JSON inválido."); }
+  if (typeof d !== "object" || d === null || Array.isArray(d)) return apiErr(400, "El cuerpo debe ser un objeto JSON.");
+  const { necesidad, tipo_conexion, auth } = d;
+  if (typeof necesidad !== "string" || !necesidad.trim() || necesidad.length > 2000)
+    return apiErr(400, "necesidad debe ser un texto de 1 a 2000 caracteres.");
+  if (tipo_conexion !== undefined && !CONEXIONES.includes(tipo_conexion)) return apiErr(400, "tipo_conexion debe ser 'remoto' o 'local'.");
+  if (auth !== undefined && !AUTHS.includes(auth)) return apiErr(400, "auth debe ser 'ninguna', 'clave', 'oauth' o 'desconocida'.");
+  const filtros: Filtros = { ...(tipo_conexion && { tipo_conexion }), ...(auth && { auth }) };
+  try {
+    const r = await buscarYRegistrar(env, ctx, necesidad, filtros);
+    return apiRes(200, r.coincidencias.length ? { coincidencias: r.coincidencias } : { coincidencias: [], mensaje: r.mensaje ?? "sin coincidencias fiables" });
+  } catch (e) {
+    return e instanceof InputError ? apiErr(400, e.message) : apiErr(500, "Error interno.");
+  }
+}
+
+function pagina(): Response {
+  const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return new Response(renderPagina(nonce), {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (req.headers.get("user-agent")?.startsWith(UA_PREFIJO)) return err(403, "Petición recursiva rechazada.");
@@ -117,10 +168,14 @@ export default {
     } catch {
       // fail open: a limiter outage must not take the service down
     }
-    if (!success) return err(429, "Demasiadas peticiones, inténtalo de nuevo en un minuto.");
-    if (req.method !== "POST") return err(405, "Método no permitido; usa POST.", { Allow: "POST" });
+    const path = new URL(req.url).pathname;
+    const esApi = path === "/api/buscar";
+    if (!success) return esApi ? apiErr(429, LIMITE) : err(429, LIMITE);
+    if (esApi) return apiBuscar(req, env, ctx);
+    if (req.method === "GET" && path === "/") return pagina();
+    if (req.method !== "POST") return err(405, NO_POST, { Allow: "POST" });
     const body = await readCapped(req);
-    if (!body) return err(413, "Petición demasiado grande (máximo 16 KB).");
+    if (!body) return err(413, GRANDE);
     if (esLote(body)) return err(400, "No se admiten lotes de peticiones.", undefined, -32600);
     // Stateless: fresh server + transport per request, JSON responses (no SSE/session).
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
