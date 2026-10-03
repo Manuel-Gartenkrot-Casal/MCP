@@ -49,9 +49,9 @@ function buildServer(env: Env, ctx: ExecutionContext) {
       description:
         "Busca en el catálogo de servidores MCP según una necesidad descrita en lenguaje natural (por ejemplo: 'leer hojas de cálculo'). Devuelve los servidores más relevantes y cómo conectarlos.",
       inputSchema: {
-        necesidad: z.string().max(2000),
-        tipo_conexion: z.enum(["remoto", "local"]).optional(),
-        auth: z.enum(["ninguna", "clave", "oauth", "desconocida"]).optional(),
+        necesidad: z.string().max(2000).describe("Qué necesitas hacer, en lenguaje natural (español o inglés), máximo 2000 caracteres."),
+        tipo_conexion: z.enum(["remoto", "local"]).optional().describe("Filtro opcional: 'remoto' (se conecta por URL) o 'local' (se ejecuta en tu máquina con npx/uvx/docker)."),
+        auth: z.enum(["ninguna", "clave", "oauth", "desconocida"]).optional().describe("Filtro opcional de autenticación: 'ninguna', 'clave' (clave o token secreto), 'desconocida' (remoto sin cabeceras declaradas) u 'oauth'. Nota: 'oauth' se acepta pero el catálogo no lo asigna todavía a ninguna entrada, así que devuelve sin resultados."),
       },
     },
     async ({ necesidad, tipo_conexion, auth }) => {

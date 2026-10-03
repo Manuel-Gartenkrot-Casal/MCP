@@ -40,6 +40,13 @@ const json = async (r: Response) => {
 };
 
 describe("worker MCP", () => {
+  it("tools/list expone descripciones de los parámetros (oauth documentado)", async () => {
+    const r = await json(await worker.fetch(rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" }), makeEnv() as any, ctx()));
+    const props = r.result.tools.find((t: any) => t.name === "buscar").inputSchema.properties;
+    for (const k of ["necesidad", "tipo_conexion", "auth"]) expect(props[k].description, k).toBeTruthy();
+    expect(props.auth.description).toMatch(/oauth/);
+    expect(props.auth.description).toMatch(/sin resultados|ningún resultado|no devuelve/i);
+  });
   it("initialize y tools/list incluyen buscar", async () => {
     const env = makeEnv();
     const init = await worker.fetch(rpc({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "t", version: "1" } } }), env as any, ctx());
