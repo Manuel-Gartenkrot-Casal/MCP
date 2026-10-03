@@ -29,3 +29,31 @@ describe("validarDestino", () => {
   });
   it("entrada no string", () => rechaza(undefined));
 });
+
+describe("validarDestino: ronda de arreglos", () => {
+  it.each(["mcp.propio.dev", "mcp.propio.dev:8787", "MCP.Propio.Dev.", " mcp.propio.dev:8787 "])(
+    "hostPropio %j rechaza su dominio", (hp) => {
+      expect(() => validarDestino("https://mcp.propio.dev/", hp)).toThrow(GatewayError);
+    });
+  it("hostPropio localhost:8787 no rompe y localhost sigue prohibido", () => {
+    expect(() => validarDestino("https://localhost/", "localhost:8787")).toThrow(GatewayError);
+  });
+  it("hostPropio vacío/undefined no revienta ni rechaza de más", () => {
+    expect(validarDestino("https://mcp.example.com/", "").hostname).toBe("mcp.example.com");
+    expect(validarDestino("https://mcp.example.com/", undefined as any).hostname).toBe("mcp.example.com");
+    expect(validarDestino("https://undefined/", undefined as any).hostname).toBe("undefined");
+  });
+  it.each([
+    "https://localhost../", "https://a.local../", "https://a..b.com/", "https://1.2.3.4./", "https://1.2.3.4../",
+    "https://[::ffff:127.0.0.1]/", "https://127.1/", "https://169.254.169.254/", "https://metadata.google.internal/",
+  ])("rechaza %s", rechaza);
+  it("acepta host público en mayúsculas o con punto final", () => {
+    expect(validarDestino("https://MCP.Example.com./x", H).hostname).toBe("mcp.example.com.");
+  });
+  it("hostname de 253 caracteres, rápido", () => {
+    const host = [..."abcd"].map((c) => c.repeat(60)).join(".").slice(0, 249) + ".com";
+    const t = Date.now();
+    validarDestino(`https://${host}/`, H);
+    expect(Date.now() - t).toBeLessThan(200);
+  });
+});
