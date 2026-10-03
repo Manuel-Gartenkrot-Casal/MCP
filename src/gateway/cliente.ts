@@ -13,7 +13,8 @@ const VERSIONES = [PROTOCOL, "2025-03-26", "2024-11-05"];
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
-const SID_OK = /^[\x21-\x7e]{1,256}$/;
+const SEP = /\r?\n\r?\n/; // separador de eventos SSE
+const SID_OK =/^[\x21-\x7e]{1,256}$/;
 type Rpc = Record<string, unknown>;
 const ok = (j: unknown, id: number): j is Rpc => isObj(j) && ("result" in j || "error" in j) && j.id === id;
 
@@ -29,24 +30,35 @@ async function leerRespuesta(res: Response, id: number): Promise<Rpc | null> {
   const sse = (res.headers.get("content-type") ?? "").toLowerCase().includes("text/event-stream");
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let texto = "", total = 0, desde = 0;
+  // Tiempo lineal: solo se busca separador en el trozo nuevo (+3 caracteres previos, por si llega partido) y
+  // lo pendiente se une una vez por separador encontrado; un goteo sin separador no reescanea nada.
+  const partes: string[] = [];
+  let cola = "", total = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
     if (total > MAX_BYTES) { await reader.cancel().catch(() => {}); throw new GatewayError("destino_caido"); }
-    texto += dec.decode(value, { stream: true });
+    const s = dec.decode(value, { stream: true });
+    partes.push(s);
     if (!sse) continue;
-    const re = /\r?\n\r?\n/g;
-    re.lastIndex = desde;
-    for (let m; (m = re.exec(texto)); desde = re.lastIndex) {
-      const j = evento(texto.slice(desde, m.index), id);
+    const ventana = cola + s;
+    cola = ventana.slice(-3);
+    if (!SEP.test(ventana)) continue;
+    const pendiente = partes.join("");
+    const re = new RegExp(SEP.source, "g");
+    let desde = 0;
+    for (let m; (m = re.exec(pendiente)); desde = re.lastIndex) {
+      const j = evento(pendiente.slice(desde, m.index), id);
       if (j) { await reader.cancel().catch(() => {}); return j; }
     }
+    partes.length = 0;
+    partes.push(pendiente.slice(desde));
+    cola = partes[0].slice(-3);
   }
-  texto += dec.decode();
-  if (sse) return evento(texto.slice(desde), id);
-  try { const j = JSON.parse(texto); return ok(j, id) ? j : null; } catch { return null; }
+  const resto = partes.join("") + dec.decode();
+  if (sse) return evento(resto, id);
+  try { const j = JSON.parse(resto); return ok(j, id) ? j : null; } catch { return null; }
 }
 
 // Única función que hace HTTP saliente. Sin `id` (notificación) no se lee el cuerpo.

@@ -262,6 +262,32 @@ describe("endurecimiento", () => {
     expect(cancelado).toBe(true);
     expect(leidos).toBeLessThan(6);
   }, 2000);
+  it("SSE de 262.144 trozos de 1 byte sin separador: tiempo lineal y destino_caido", async () => {
+    const N = 256 * 1024, uno = new Uint8Array([97]);
+    let n = 0;
+    const stream = new ReadableStream<Uint8Array>({ pull(c) { if (n++ >= N) c.close(); else c.enqueue(uno); } });
+    const { fn } = fake(() => new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    const t0 = performance.now();
+    expect(await codigo(listarHerramientas({ url: URL_D }, fn))).toBe("destino_caido");
+    expect(performance.now() - t0).toBeLessThan(1500);
+  }, 30000);
+  for (const [nombre, a, b] of [["CRLF partido \\r\\n\\r | \\n", "\r\n\r", "\n"], ["LF partido \\n | \\n", "\n", "\n"]] as const) {
+    it(`separador ${nombre} entre dos trozos se detecta (stream abierto)`, async () => {
+      const enc = new TextEncoder();
+      let cancelado = false;
+      const stream = new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(enc.encode(`data: ${JSON.stringify(rpc({ tools: [{ name: "x" }] }, 77))}${a}`));
+          c.enqueue(enc.encode(`${b}data: ${JSON.stringify(rpc({ tools: [{ name: "bueno" }] }, 2))}${a}`));
+          c.enqueue(enc.encode(b));
+        },
+        cancel() { cancelado = true; },
+      });
+      const { fn } = fake(() => new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }));
+      expect(await listarHerramientas({ url: URL_D }, fn)).toEqual([{ name: "bueno" }]);
+      expect(cancelado).toBe(true);
+    }, 2000);
+  }
   it("notificación: no espera al cuerpo (stream SSE abierto no bloquea)", async () => {
     let cancelado = false;
     const { fn } = fake((c) => c.body.method === "initialize" ? json(rpc({}), { "Mcp-Session-Id": "S" })
