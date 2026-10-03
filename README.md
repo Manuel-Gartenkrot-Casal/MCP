@@ -1,8 +1,8 @@
 # catalogo-mcp-busqueda
 
-Servidor MCP público, gratuito y de solo lectura, en Cloudflare Workers. Expone una única herramienta:
+Servidor MCP público, gratuito y de solo lectura, en Cloudflare Workers. Expone tres herramientas (`buscar`, `explorar`, `llamar`; las dos últimas son la pasarela, ver "Pasarela: explorar y llamar"):
 
-`buscar(necesidad, tipo_conexion?, auth?)`: busca por significado en un catálogo de servidores MCP y devuelve los más relevantes con cómo conectarlos.
+`buscar(necesidad, tipo_conexion?, auth?)`: busca por significado en un catálogo de servidores MCP y devuelve los más relevantes con su `id` y cómo conectarlos.
 
 - `necesidad`: texto libre (máx. 2000 caracteres), en español o inglés.
 - `tipo_conexion`: `remoto` | `local`. `auth`: `ninguna` | `clave` | `oauth` | `desconocida` (`oauth` se acepta como filtro pero el catálogo nunca lo asigna, así que no devuelve resultados).
@@ -32,6 +32,22 @@ Otros clientes con Streamable HTTP (forma del JSON por verificar según el clien
 
 Limitación honesta: solo se indexan ~4.500 de las ~38.500 entradas del registro (el límite gratuito de Vectorize son 5 M de dimensiones almacenadas, ~4.880 vectores a 1024-d); el resto no aparece en las búsquedas. Los resultados son texto de terceros (nombres y descripciones del registro) y se entregan delimitados como datos, no como instrucciones.
 
+## Pasarela: explorar y llamar
+
+Flujo: `buscar` (devuelve el `id`) → `explorar` (lista las herramientas del servidor remoto) → `llamar` (ejecuta una). El Worker actúa de cliente MCP hacia el destino, sin autenticación, a través de un Durable Object (`SesionDO`) por token de sesión.
+
+- `explorar(servidor, sesion?)`: lista hasta 50 herramientas (salida máx. 16 KB) con nombre, descripción, parámetros y una marca. Devuelve un token `sesion`.
+- `llamar(servidor, herramienta, argumentos?, sesion?, confirmar?)`: ejecuta la herramienta. Sin `sesion` explora antes y crea una.
+- Límites: `servidor` ≤ 128 caracteres; `sesion` = token de 32 hex devuelto por las herramientas, caduca a los 10 min sin uso; `herramienta` `[A-Za-z0-9_.-]{1,128}`; `argumentos` objeto JSON plano ≤ 16 KB; resultado ≤ 32 KB (se corta con `[truncado]`); respuesta del destino ≤ 256 KB y 20 s de timeout.
+- Solo servidores REMOTOS SIN autenticación. Si el destino responde 401/403 se devuelve "requiere autenticación, no soportado". El catálogo no puede saber de antemano cuáles la exigen (`auth` es `desconocida` en los remotos sin cabeceras declaradas). Medido el 2026-10-03 con un sondeo de solo lectura (handshake) sobre 100 remotos al azar: 57 respondieron `tools/list` sin autenticación, 42 exigían autenticación (401/403) y 1 devolvió 404. En los 57 se listaron 850 herramientas: 643 de solo lectura, 42 destructivas y 165 sin declarar. Muestra pequeña (±10 puntos aprox.).
+- Confirmación: `solo_lectura` se ejecuta directamente; `destructiva` y `sin_declarar` exigen `confirmar: true`. La marca sale de las anotaciones del propio destino: son declaraciones, no garantías.
+- Aislamiento: cada token es una sesión; un token no vale para otro servidor ("la sesión pertenece a otro servidor"). Las sesiones no se renuevan en silencio: al caducar hay que volver a explorar.
+- Rate limit por IP: `explorar` 20/min, `llamar` 10/min, además del global de 30/min.
+- Interruptor: la variable `GATEWAY_ENABLED` de `wrangler.toml` (`"1"` activa; cualquier otro valor la desactiva). Cambiar la variable y ejecutar `npx wrangler deploy`.
+- Registro en R2 bajo `llamadas/` (id de servidor, nombre de herramienta, marca, tipo de resultado, duración; nunca argumentos ni resultados), borrado a los 30 días.
+- Todo texto que viene del destino se sanitiza y se entrega delimitado como `<dato>…</dato>`: es contenido no confiable, no instrucciones.
+- Responsabilidad: una herramienta sin autenticación puede tener efectos en un servicio de terceros, ejecutados desde IPs de Cloudflare. La confirmación existe por eso, y el operador puede apagar la pasarela con `GATEWAY_ENABLED`.
+
 ## Despliegue
 
 Una sola vez, con tu cuenta de Cloudflare (`npx wrangler login` antes):
@@ -55,6 +71,15 @@ Una sola vez, con tu cuenta de Cloudflare (`npx wrangler login` antes):
 12. Con la ingesta hecha, define las 4 variables de entorno del paso 10 en tu shell y ejecuta `npm run eval`. El informe compara solo vector y con reranker. Pon el umbral recomendado del modo vectorial en `UMBRAL_VECTOR` de `src/search/buscar.ts` (ahora `0.5`), vuelve a desplegar.
 13. Prueba de humo: añade la URL a un cliente MCP (ver arriba) y llama a `buscar` con una necesidad real; comprueba que devuelve resultados y que una consulta absurda devuelve "sin coincidencias".
 
+Pasarela (instrucciones para el usuario, después de lo anterior):
+
+14. La migración del Durable Object (`v1`, `SesionDO`) la aplica el propio `npx wrangler deploy` del paso 9.
+15. Segunda regla de ciclo de vida de R2 (logs de la pasarela):
+
+        npx wrangler r2 bucket lifecycle add catalogo-mcp-logs --name expire-llamadas --prefix llamadas/ --expire-days 30 --force
+
+16. Prueba de humo de la pasarela: con `buscar` obtén un `id`; `explorar` ese `id`; `llamar` a una herramienta `solo_lectura` con el `sesion` devuelto. Comprueba que un servidor que pide clave devuelve el mensaje de autenticación y que una herramienta sin marca pide `confirmar`.
+
 ## Desarrollo
 
     npm test                  # vitest
@@ -72,4 +97,8 @@ Una sola vez, con tu cuenta de Cloudflare (`npx wrangler login` antes):
 - GitHub desactiva los workflows programados tras 60 días sin actividad en el repositorio; si la ingesta deja de ejecutarse, reactívala en la pestaña Actions.
 - Workers AI gratis: 10.000 neuronas/día; la ingesta es incremental para caber.
 - El catálogo depende del registro oficial; las entradas sin conexión declarada (ni remota ni paquete) se omiten, y la autenticación `oauth` no es detectable, así que nunca se emite (los remotos sin cabeceras declaradas quedan como `desconocida`).
+- Las 4.500 entradas indexadas son todas remotas (el ranking de calidad llena el cupo con remotos primero), así que el filtro `tipo_conexion: "local"` de `buscar` hoy no devuelve resultados.
+- Límites diarios de Durable Objects en Workers Free (peticiones/filas escritas): no verificados (por verificar). Un usuario intensivo podría agotarlos y la pasarela respondería "error interno" hasta el reinicio.
+- Cliente MCP saliente mínimo y propio: solo la primera página de `tools/list`, sin streaming hacia el cliente, sin recursos ni prompts.
+- Un destino colgado retiene el cerrojo de esa sesión como máximo 20 s (el timeout).
 - Reranker implementado pero DESACTIVADO (2026-10-02). Eval real sobre el índice desplegado: solo vector, top-5 12/20 (en 6/12, es 6/8); con reranker 13/20 (en 8/12, es 5/8): +1 caso en total y el español empeora. Los puntajes de `bge-reranker-base` (probabilidades en [0,1], respuesta ordenada por puntaje y alineada por `id`) son diminutos para consultas en lenguaje natural (0.000-0.003), así que ningún umbral absoluto sirve y las consultas legítimas en español se rechazaban. Reactivar: `RERANK_ENABLED = true`, repetir `npm run eval` (el barrido del reranker incluye umbrales 0.001-0.99) y recalibrar `UMBRAL_RERANK` (0.5, sin calibrar). Lo siguiente a probar sería un reranker multilingüe (tipo `bge-reranker-v2-m3`, solo si existe en Workers AI; por verificar). Sin verificar: que el binding `env.AI` del Worker devuelva la misma forma que la REST y el límite de contextos con 100 candidatos.
