@@ -8,7 +8,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "eval": "tsx eval/run.ts",
-    "memoria": "tsx local/server.ts"
+    "memoria": "tsx local/server.ts",
+    "alta": "tsx local/alta.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261002.1",
@@ -20,6 +21,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
+    "playwright-core": "^1.63.0",
     "zod": "^4.6.5"
   }
 }
