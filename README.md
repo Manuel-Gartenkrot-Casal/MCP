@@ -24,6 +24,10 @@ Otros clientes con Streamable HTTP (forma del JSON por verificar según el clien
 
     { "mcpServers": { "catalogo": { "type": "http", "url": "https://catalogo-mcp-busqueda.manuelgartenkrotcasal.workers.dev/mcp" } } }
 
+## Skills de terceros en `buscar`
+
+La herramienta MCP `buscar` (no `/api/buscar` ni la web) consulta además `https://skills.sh/api/search` en paralelo y añade, tras los MCP, hasta 3 skills con su comando `npx skills add <fuente> --skill <id>`. No se almacenan ni se indexan. Es un tercero sin verificar: timeout de 3 s, y ante cualquier fallo (red, 5xx, JSON inesperado) se omite sin afectar al resto. Solo se aceptan `source`/`skillId` con caracteres seguros porque el comando lo construimos nosotros. Medido el 2026-10-04: bueno con consultas cortas ("pdf", "leer hojas de calculo"), ruidoso con frases largas, y la API no devuelve descripción.
+
 ## Interfaz web
 
 - Disponible en `/`: `GET /` (solo esa ruta) devuelve una página autocontenida en español: caja de búsqueda, filtros de conexión y autenticación, ejemplos, resultados en tarjetas (nombre, función, tipo, autenticación, puntaje, conexión, `id`) con botón para copiar el comando `claude mcp add`, y el comando para añadir el servidor MCP a tu IA. Sin recursos externos; cabeceras `Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` (nonce aleatorio por petición), `nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. El texto del catálogo se inserta solo como texto (`textContent`), nunca como HTML ni como enlace. El botón "Copiar comando" solo aparece si la URL remota no contiene caracteres que una shell interprete (si no, solo se ofrece copiar la conexión, con el aviso "Revisa el comando antes de ejecutarlo."). La página no pasa por el rate limit (es estática); las búsquedas sí.

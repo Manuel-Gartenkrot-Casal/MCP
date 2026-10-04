@@ -9,6 +9,7 @@ import { registerGateway, type GwEnv } from "./gateway/tools";
 import { UA_PREFIJO } from "./gateway/cliente";
 import { renderPagina } from "./ui";
 import { listarServicios, formatServicios } from "./servicios";
+import { buscarSkills, formatSkills } from "./skills";
 import { EMBED_MODEL, reducir } from "./embedding";
 import type { Entry } from "./types";
 
@@ -56,7 +57,7 @@ function buildServer(env: Env, ctx: ExecutionContext, ip: string, host: string) 
     "buscar",
     {
       description:
-        "Busca en el catálogo de servidores MCP según una necesidad descrita en lenguaje natural (por ejemplo: 'leer hojas de cálculo'). Devuelve los servidores más relevantes y cómo conectarlos. Para usar uno remoto sin autenticación, pasa su `id` a `explorar` y `llamar`.",
+        "Busca en el catálogo de servidores MCP según una necesidad descrita en lenguaje natural (por ejemplo: 'leer hojas de cálculo'). Devuelve los servidores más relevantes y cómo conectarlos, y además hasta 3 skills de skills.sh (terceros, sin verificar) con su comando de instalación. Para usar uno remoto sin autenticación, pasa su `id` a `explorar` y `llamar`.",
       inputSchema: {
         necesidad: z.string().max(2000).describe("Qué necesitas hacer, en lenguaje natural (español o inglés), máximo 2000 caracteres."),
         tipo_conexion: z.enum(["remoto", "local"]).optional().describe("Filtro opcional: 'remoto' (se conecta por URL) o 'local' (se ejecuta en tu máquina con npx/uvx/docker)."),
@@ -66,8 +67,9 @@ function buildServer(env: Env, ctx: ExecutionContext, ip: string, host: string) 
     async ({ necesidad, tipo_conexion, auth }) => {
       const filtros: Filtros = { ...(tipo_conexion && { tipo_conexion }), ...(auth && { auth }) };
       try {
-        const r = await buscarYRegistrar(env, ctx, necesidad, filtros);
-        return text(r.coincidencias.length ? formatResultados(r.coincidencias) : (r.mensaje ?? "sin coincidencias fiables"));
+        const [r, skills] = await Promise.all([buscarYRegistrar(env, ctx, necesidad, filtros), buscarSkills(necesidad)]);
+        const mcp = r.coincidencias.length ? formatResultados(r.coincidencias) : (r.mensaje ?? "sin coincidencias fiables");
+        return text([mcp, formatSkills(skills)].filter(Boolean).join("\n\n"));
       } catch (e) {
         return e instanceof InputError ? text(e.message, true) : text("error interno", true);
       }
