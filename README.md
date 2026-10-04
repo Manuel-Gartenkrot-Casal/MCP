@@ -11,7 +11,7 @@ Incluye una página web de búsqueda, disponible en `/` del mismo Worker (ver "I
 
 ## Añadirlo a un cliente MCP
 
-**Servicio en producción** (desplegado y probado el 2026-10-03; pasarela encendida):
+**Servicio en producción** (desplegado y probado el 2026-10-04, con skills de skills.sh en `buscar`; pasarela encendida):
 El transporte MCP responde a `POST` en cualquier ruta salvo `/api/buscar` (Streamable HTTP sin estado, respuestas JSON); `GET /` sirve la página web y cualquier otro método o ruta responde 405. Usa `/mcp` por convención:
 
     https://catalogo-mcp-busqueda.manuelgartenkrotcasal.workers.dev/mcp
