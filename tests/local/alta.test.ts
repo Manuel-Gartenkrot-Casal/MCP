@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { ejecutarAlta, type Deps } from "../../local/alta";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { ejecutarAlta, comandoSpawn, type Deps } from "../../local/alta";
 import { SERVICIOS } from "../../src/servicios";
 
 const EMAIL = "secreto@ejemplo.com";
@@ -23,6 +25,19 @@ function fake(o: { resp?: string[]; res?: "enviado" | "no_encontrado"; conex?: M
   return { deps, calls, textos, ejecutadas, marcadas };
 }
 
+describe("comandoSpawn", () => {
+  it("en win32 usa cmd.exe porque claude es un .cmd (spawn sin shell da ENOENT)", () => {
+    expect(comandoSpawn("claude", ["mcp", "add", "x"], "win32")).toEqual(["cmd.exe", ["/d", "/s", "/c", "claude", "mcp", "add", "x"]]);
+  });
+  it("en otras plataformas lanza el comando directo", () => {
+    expect(comandoSpawn("claude", ["mcp"], "linux")).toEqual(["claude", ["mcp"]]);
+  });
+});
+
+it(".gitignore excluye los CSV de cuentas (contienen contraseñas en claro)", () => {
+  expect(readFileSync(resolve(process.cwd(), ".gitignore"), "utf8")).toMatch(/^cuentas-\*\.csv$/m);
+});
+
 describe("ejecutarAlta", () => {
   it("escribe la credencial en el CSV antes de rellenar", async () => {
     const f = fake();
@@ -37,18 +52,19 @@ describe("ejecutarAlta", () => {
     expect(r).toEqual({ registrados: ["github"], saltados: ["vercel"] });
   });
 
-  it("no_encontrado pide completar a mano y Enter sigue marcando", async () => {
+  it("modo manual: pide usar la contraseña de la fila del CSV y Enter sigue marcando", async () => {
     const f = fake({ res: "no_encontrado" });
     await ejecutarAlta(["github"], EMAIL, f.deps);
-    expect(f.textos.join("\n")).toMatch(/No encontré el formulario/);
+    expect(f.textos.join("\n")).toMatch(/contraseña de la fila de GitHub del CSV/);
     expect(f.marcadas).toEqual([["github", "registrado"]]);
   });
 
-  it("si no se puede abrir la página, se salta sin marcar", async () => {
+  it("si no se puede abrir la página, se salta sin marcar y sin escribir fila fantasma en el CSV", async () => {
     const f = fake({ abreFalla: true });
     const r = await ejecutarAlta(["github"], EMAIL, f.deps);
     expect(r.saltados).toEqual(["github"]);
     expect(f.marcadas).toEqual([]);
+    expect(f.calls.filter((c) => c.startsWith("csv:"))).toEqual([]);
   });
 
   it("id desconocido rechaza antes de abrir nada", async () => {

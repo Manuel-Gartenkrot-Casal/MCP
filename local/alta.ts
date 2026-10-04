@@ -1,6 +1,7 @@
 // Alta guiada y automatizada, solo en tu máquina: abre cada formulario de registro en un navegador visible, lo rellena con una
 // contraseña aleatoria por servicio y espera a que resuelvas CAPTCHA o verificaciones. Uso: npm run alta [id ...]
 // El email y las contraseñas nunca van a servicios.json, logs ni argumentos; solo al CSV (antes de enviar) y al propio formulario.
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -26,6 +27,11 @@ export type Deps = {
   log(msg: string): void;
 };
 
+// claude es un .cmd en Windows: spawn sin shell da ENOENT. comando() solo deja pasar [A-Za-z0-9._~:/-], sin metacaracteres de cmd.exe.
+export function comandoSpawn(cmd: string, args: string[], plataforma: string = process.platform): [string, string[]] {
+  return plataforma === "win32" ? ["cmd.exe", ["/d", "/s", "/c", cmd, ...args]] : [cmd, args];
+}
+
 export async function ejecutarAlta(ids: string[], email: string, deps: Deps): Promise<{ registrados: string[]; saltados: string[] }> {
   const lista: Servicio[] = ids.length
     ? ids.map((id) => SERVICIOS.find((s) => s.id === id) ?? (() => { throw new Error(`Servicio desconocido: ${id}`); })())
@@ -38,15 +44,14 @@ export async function ejecutarAlta(ids: string[], email: string, deps: Deps): Pr
     if (i) await deps.pausa(2000);
     deps.log(`\n[${i + 1}/${lista.length}] ${s.nombre}`);
     const password = deps.password();
-    await deps.anadirCredencial({ nombre: s.nombre, url: s.registro_url, usuario: email, password }); // antes de enviar nada
-    let res: "enviado" | "no_encontrado";
-    try {
-      const pagina = await deps.abrir(s.registro_url);
-      res = await deps.rellenar(pagina, { email, password }).catch(() => "no_encontrado" as const);
-    } catch { deps.log(`No pude abrir ${s.nombre}; se salta.`); saltados.push(s.id); continue; }
+    let pagina: unknown;
+    try { pagina = await deps.abrir(s.registro_url); } catch { deps.log(`No pude abrir ${s.nombre}; se salta.`); saltados.push(s.id); continue; }
+    // Tras abrir (sin filas fantasma) y antes de rellenar/enviar: si algo falla después, la contraseña ya está guardada.
+    await deps.anadirCredencial({ nombre: s.nombre, url: s.registro_url, usuario: email, password });
+    const res = await deps.rellenar(pagina, { email, password }).catch(() => "no_encontrado" as const);
     const r = (await deps.preguntar(res === "enviado"
       ? "Si hay CAPTCHA o verificación, resuélvelo y pulsa Enter (s = saltar): "
-      : "No encontré el formulario; complétalo tú y pulsa Enter (s = saltar): ")).trim().toLowerCase();
+      : `No pude completar el formulario solo (revisa la página: puede haberse enviado ya). Si falta, complétalo tú con la contraseña de la fila de ${s.nombre} del CSV y pulsa Enter (s = saltar): `)).trim().toLowerCase();
     if (r === "s") { saltados.push(s.id); continue; }
     await deps.marcar(s.id, "registrado");
     registrados.push(s.id);
@@ -73,8 +78,10 @@ async function main(): Promise<void> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const email = (await rl.question("Email para los registros: ")).trim();
   if (!/^[^\s@]+@[^\s@]+$/.test(email)) throw new Error("Email no válido.");
-  const carpeta = (await rl.question(`Carpeta del CSV de contraseñas [${process.cwd()}]: `)).trim() || process.cwd();
-  const ruta = join(carpeta, `cuentas-${new Date().toISOString().slice(0, 10)}.csv`);
+  const descargas = join(homedir(), "Downloads");
+  const porDefecto = existsSync(descargas) ? descargas : process.cwd(); // nunca dentro del repo por defecto: el CSV lleva contraseñas en claro
+  const carpeta = (await rl.question(`Carpeta del CSV de contraseñas [${porDefecto}]: `)).trim() || porDefecto;
+  const ruta = join(carpeta, `cuentas-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`);
 
   const { chromium } = await import("playwright-core");
   let browser;
@@ -95,7 +102,7 @@ async function main(): Promise<void> {
         const d: any = await (await fetch(`${base}/api/servicios`, { signal: AbortSignal.timeout(10000) })).json();
         return new Map<string, Conexion>(d.servicios.filter((s: any) => s.mcp_id && s.conexion).map((s: any) => [s.mcp_id, s.conexion]));
       },
-      ejecutar: (cmd, args) => new Promise((res) => { const p = spawn(cmd, args, { stdio: "inherit" }); p.on("error", () => res(1)); p.on("close", (c) => res(c ?? 1)); }),
+      ejecutar: (cmd, args) => new Promise((res) => { const [f, a] = comandoSpawn(cmd, args); const p = spawn(f, a, { stdio: "inherit" }); p.on("error", () => res(1)); p.on("close", (c) => res(c ?? 1)); }),
       pausa: (ms) => new Promise((res) => setTimeout(res, ms)),
       log: (m) => console.log(m),
     });
