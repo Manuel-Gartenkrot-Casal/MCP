@@ -69,7 +69,7 @@ Flujo: `buscar` (devuelve el `id`) → `explorar` (lista las herramientas del se
 
 ## Servicios gratuitos y memoria local
 
-Alta guiada: no se automatiza ningún registro y ninguna herramienta ni ruta recibe contraseñas, emails o claves.
+El Worker nunca recibe contraseñas, emails ni claves: la lista es solo lectura. El registro automático (más abajo) corre únicamente en tu máquina.
 
 - `servicios` (herramienta MCP) y `GET /api/servicios` (solo mismo origen, `no-store`, mismo límite por IP) devuelven una lista curada a mano (`src/servicios.ts`) de servicios gratuitos para developers: enlace de registro, si la página ofrece entrar con GitHub/Google (`oauth`; "no confirmado" si no se comprobó) y, si tienen MCP oficial en el catálogo, su conexión (leída de D1, solo lectura). La web la muestra en el desplegable "Servicios gratuitos para developers".
 - `local/server.ts` es un MCP stdio aparte que recuerda qué servicios tiene el usuario en `~/.catalogo-mcp/servicios.json` (`CATALOGO_MCP_DIR` lo cambia): solo servicio, estado (`registrado` o `conectado`) y fecha. Herramientas `mis_servicios` y `marcar(servicio, estado)` (`quitado` borra). No hace peticiones de red. Desde un clon del repositorio:
@@ -77,6 +77,10 @@ Alta guiada: no se automatiza ningún registro y ninguna herramienta ni ruta rec
       claude mcp add memoria -- npx tsx <ruta-al-repo>/local/server.ts
 
   La IA debe llamar a `marcar` cuando el usuario confirme; no se puede verificar que de verdad se registró. Sin bloqueo entre procesos (gana la última escritura). Publicarlo en npm queda pendiente.
+- `npm run alta [id ...]` (`local/alta.ts`) automatiza el alta en tu máquina: te pide el email y la carpeta del CSV, abre cada formulario de `src/servicios.ts` en tu Chrome o Edge visible (`playwright-core`, sin descargar navegadores), lo rellena con una contraseña aleatoria distinta por servicio y pulsa enviar. Si hay CAPTCHA, verificación de email o teléfono, se detiene y espera: lo resuelves tú y pulsas Enter (`s` = saltar). Al pulsar Enter llama a `marcar(servicio, "registrado")`; si el servicio tiene MCP remoto con comando seguro, ofrece conectarlo con `claude mcp add` (solo si respondes `s`).
+  - Las contraseñas van a un CSV (`name,url,username,password`, importable en Chrome, Bitwarden o 1Password) que se escribe **antes** de enviar cada formulario. Es el único sitio donde quedan en claro: impórtalo y bórralo. En Windows no se aplica el modo `0600`.
+  - Nunca guarda email ni contraseñas en la memoria local ni en logs, no usa el portapapeles y no intenta resolver CAPTCHAs.
+  - Límites: la heurística (email, contraseña y botón dentro del mismo formulario) falla con formularios de varios pasos y entonces pasa al modo manual; no hay adaptadores por servicio. Automatizar altas puede ir contra los términos de algún servicio o activar su antifraude; por eso va con tu navegador, tú presente y 2 s de pausa entre servicios.
 
 ## Despliegue
 
